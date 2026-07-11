@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>SlideMaker OS</title>
+  <link rel="stylesheet" href="css/player.css">
+</head>
+<body>
+
+  <!-- ============ LANDING: retro-terminal loader ============ -->
+  <section id="landing">
+    <div class="term">
+      <pre id="bootLines" aria-live="polite"></pre>
+
+      <h1 class="logo">SLIDEMAKER<span class="accent"> OS</span> <span class="ver">v1.0</span></h1>
+      <p class="tagline">// PHOSPHOR DECK PLAYER — PASTE PAYLOAD OR LOAD DEMO REEL</p>
+
+      <textarea id="jsonInput" placeholder="PASTE DECK.JSON &#9646;" spellcheck="false"
+                autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+
+      <div class="btnRow">
+        <button id="btnLoad" class="tbtn" type="button">[ LOAD ]</button>
+        <button id="btnDemo" class="tbtn" type="button">[ LOAD DEMO DECK ]</button>
+      </div>
+
+      <p class="hint">&gt; or drag &amp; drop a .json file anywhere on this page</p>
+
+      <p id="errLine" class="err" role="alert" hidden></p>
+
+      <div id="progressBox" hidden>
+        <pre id="progressBar">[&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;&#9617;]   0% LOADING REELS</pre>
+        <p id="phaseLabel">STANDBY</p>
+        <button id="btnStart" class="tbtn start" type="button" disabled>[ START &#9654; ]</button>
+        <p id="readyNote" hidden>&gt; first reels buffered — remaining assets keep loading in the background</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STAGE: 16:9 letterboxed player ============ -->
+  <section id="stageView" hidden>
+    <div id="stageWrap">
+      <div id="stage">
+        <img id="slideImg" alt="">
+        <video id="transVideo" muted playsinline preload="auto"></video>
+        <img id="fadeImg" alt="" aria-hidden="true">
+
+        <!-- CRT scanlines + vignette: sits over BOTH img and video so the look never breaks -->
+        <div id="crtOverlay" aria-hidden="true"></div>
+
+        <div id="caption" class="empty"></div>
+
+        <div id="controls">
+          <button id="btnBack" class="cbtn" type="button" title="Back (&#8592;)">&#9664;</button>
+          <button id="btnNext" class="cbtn" type="button" title="Next (&#8594; / Space)">&#9654;</button>
+          <span id="counter">– / –</span>
+          <div id="dots"></div>
+          <span class="spacer"></span>
+          <button id="btnGrid" class="cbtn" type="button" title="Grid (G)">&#8862;</button>
+          <button id="btnFs" class="cbtn" type="button" title="Fullscreen (F)">&#9974;</button>
+        </div>
+
+        <div id="gridOverlay" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

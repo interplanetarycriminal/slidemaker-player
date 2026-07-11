@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "deckId": "test",
+  "title": "TEST PATTERN",
+  "createdAt": "2026-07-11T00:00:00.000Z",
+  "generator": "slidemaker-player-testdeck@1.0.0",
+  "frameWidth": 1280,
+  "frameHeight": 720,
+  "assetBase": "",
+  "slides": [
+    {
+      "index": 0,
+      "id": "slide-01",
+      "title": "RED PIXEL",
+      "description": "1x1 red data-URI slide — exercises the data: src path",
+      "sourceFile": "test-red.png",
+      "image": {
+        "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 1,
+      "id": "slide-02",
+      "title": "PHOSPHOR PIXEL",
+      "description": "1x1 phosphor-green data-URI slide — next/back use crossfade (no transitions)",
+      "sourceFile": "test-green.png",
+      "image": {
+        "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOw/J8NAAMYAaQMuRLgAAAAAElFTkSuQmCC",
+        "mimeType": "image/png"
+      }
+    }
+  ],
+  "transitions": [],
+  "meta": {
+    "imageTrack": "b",
+    "videoModel": null,
+    "totalCostUsd": 0,
+    "gamma": null
+  }
+}

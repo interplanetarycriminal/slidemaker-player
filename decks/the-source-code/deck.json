@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "deckId": "the-source-code",
+  "title": "THE SOURCE CODE",
+  "createdAt": "2026-07-11T04:36:10.624Z",
+  "generator": "slidemaker-pipeline@1.0.0",
+  "frameWidth": 1280,
+  "frameHeight": 720,
+  "assetBase": "",
+  "slides": [
+    {
+      "index": 0,
+      "id": "slide-01",
+      "title": "I Can Fix The World",
+      "description": "We spent our youth staring at blinking cursors, convinced they held the secrets to a better reality. But access remained just out of reach.",
+      "sourceFile": "1.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-01.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 1,
+      "id": "slide-02",
+      "title": "Living In The Machine",
+      "description": "The transition from physical reality to the digital interface began in our bedrooms, where the glow of the cathode ray tube was our only window.",
+      "sourceFile": "3.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-02.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 2,
+      "id": "slide-03",
+      "title": "The Promise of 90s Tech",
+      "description": "We were a generation raised on 14.4k modems, believing that interconnectedness would lead to a techno-utopia.",
+      "sourceFile": "4.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-03.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 3,
+      "id": "slide-04",
+      "title": "Hacking The Threshold",
+      "description": "The line between the user and the system begins to blur as we prepare to push the boundaries of what is possible.",
+      "sourceFile": "5.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-04.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 4,
+      "id": "slide-05",
+      "title": "Touching The Digital Divine",
+      "description": "Like Michelangelo’s fresco, the human spark finally connects with the algorithmic potential.",
+      "sourceFile": "7.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-05.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 5,
+      "id": "slide-06",
+      "title": "The Portal Opens",
+      "description": "The barrier between the physical room and the digital infinite dissolves into a field of pure potential.",
+      "sourceFile": "8.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-06.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 6,
+      "id": "slide-07",
+      "title": "Stepping Into The Green",
+      "description": "We leave the constraints of the 90s behind, entering a space where the digital and the biological are one.",
+      "sourceFile": "2.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-07.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 7,
+      "id": "slide-08",
+      "title": "An Integrated Future",
+      "description": "We sit upon the hills of a new world, a landscape no longer rendered in wireframe, but flourishing in real time.",
+      "sourceFile": "9.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-08.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 8,
+      "id": "slide-09",
+      "title": "The Mechanical Bloom",
+      "description": "Technology is no longer cold copper and silicon; it’s a living, breathing mechanism.",
+      "sourceFile": "10.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-09.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 9,
+      "id": "slide-10",
+      "title": "The Infinite City",
+      "description": "Scalable, sustainable, and beautiful—the new urban center grows in harmony with the terrain.",
+      "sourceFile": "11.jpeg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-10.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 10,
+      "id": "slide-11",
+      "title": "Speeding Through The Grid",
+      "description": "We navigate the veins of this living network with the speed and thrill of the early digital pioneers.",
+      "sourceFile": "6.jpeg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-11.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 11,
+      "id": "slide-12",
+      "title": "Drifting Into The Night",
+      "description": "Even in the nocturnal hours, the network breathes with us, warm and responsive.",
+      "sourceFile": "12.jpeg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-12.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 12,
+      "id": "slide-13",
+      "title": "AI for Everyone",
+      "description": "The complex power of the source code is finally distilled into a simple, beautiful, human-centric interface.",
+      "sourceFile": "13.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-13.png",
+        "mimeType": "image/png"
+      }
+    },
+    {
+      "index": 13,
+      "id": "slide-14",
+      "title": "Think Different — This Time With The Source Code",
+      "description": "We remember the past, but we look forward to a world where everyone creates the future.",
+      "sourceFile": "14.jpg",
+      "image": {
+        "src": "decks/the-source-code/slides/slide-14.png",
+        "mimeType": "image/png"
+      }
+    }
+  ],
+  "transitions": [],
+  "meta": {
+    "imageTrack": "b",
+    "videoModel": "google/veo-3.1-lite",
+    "totalCostUsd": 0.4857,
+    "gamma": null
+  }
+}
