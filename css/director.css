@@ -1,0 +1,415 @@
+/* ============================================================
+   SlideMaker — DIRECTOR MODE skin (css/director.css)
+
+   A flagship CINEMATIC second view over the SAME Studio engine.
+   It never forks styling tokens: every colour, glow, radius and
+   font comes from the shared semantic layer defined in
+   css/player.css (:root) and re-skinned per theme in css/themes.css
+   (--bg / --panel / --fg / --accent / --accent-rgb / --ok / --err /
+    --glow-alpha / --scan-alpha / --vignette-alpha / --radius / --sans).
+
+   Glow is always gated behind --glow-alpha, so LIGHT skins
+   (paper, solarpunk: --glow-alpha:0) render flat — no bloom, no
+   scanline overlay. prefers-reduced-motion kills every animation.
+
+   Director owns ONLY its own shell (#director + descendants) and a
+   small set of `.director-mode` overrides that hide the classic
+   settings bar / filmstrip and re-home the shared #composer into the
+   centre column. It rebuilds NOTHING the engine already renders.
+   ============================================================ */
+
+/* ---- shorthands built from the shared tokens ------------------ */
+:root {
+  --dir-glow:    rgb(var(--accent-rgb) / calc(0.55 * var(--glow-alpha)));
+  --dir-glow-lo: rgb(var(--accent-rgb) / calc(0.28 * var(--glow-alpha)));
+  --dir-ok-glow: rgb(var(--ok-rgb) / calc(0.5 * var(--glow-alpha)));
+  --dir-line:    var(--accent-faint, rgb(var(--accent-rgb) / 0.25));
+  --dir-panel:   rgb(var(--accent-rgb) / 0.045);
+  --dir-panel-2: rgb(var(--accent-rgb) / 0.09);
+}
+
+/* ============ view switch (no-flash: driven off .director-mode,
+   which the pre-paint <head> snippet may put on <html>) ============ */
+#director { display: none; }
+#director[hidden] { display: none; }
+
+.director-mode #settingsBar,
+.director-mode #stripSection { display: none !important; }
+
+.director-mode #director {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 20px 28px;
+  min-height: 0;
+}
+
+/* the shared composer, once re-homed under #dirStageCenter, drops its
+   classic chrome and collapses its internal triptych to a single form
+   column (Director supplies the big FROM/TO frames itself). */
+.director-mode #dirStageCenter #composer {
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.director-mode #dirStageCenter #composerHead { display: none; }
+.director-mode #dirStageCenter #composerCols {
+  display: block;
+  padding: 0;
+}
+.director-mode #dirStageCenter .cpanel { display: none; }   /* hero frames replace these */
+.director-mode #dirStageCenter #composerForm { gap: 12px; }
+
+/* ============ the ✦ NEW DESIGN toggle (always visible) ============ */
+#btnDirectorToggle {
+  position: absolute;
+  top: 22px;
+  right: 130px;
+  z-index: 3;
+  letter-spacing: 0.06em;
+}
+#btnDirectorToggle .tw { color: var(--accent-2); }
+.director-mode #btnDirectorToggle {
+  background: var(--accent);
+  color: var(--bg);
+  text-shadow: none;
+}
+
+/* ============ REEL RAIL ============ */
+#dirReel {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 6px 14px;
+  border: 1px solid var(--dir-line);
+  border-radius: var(--radius);
+  background: var(--dir-panel);
+  scrollbar-color: var(--accent-dim) var(--bg);
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) { #dirReel { scroll-behavior: auto; } }
+
+#dirReel .reelEmpty {
+  color: var(--fg-dim);
+  font-size: 12px;
+  padding: 16px 12px;
+  white-space: nowrap;
+}
+
+.reelSlide, .reelGap {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--dir-line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 6px;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+@media (prefers-reduced-motion: reduce) { .reelSlide, .reelGap { transition: none; } }
+.reelSlide { width: 132px; }
+.reelGap   { width: 116px; }
+
+.reelSlide:hover, .reelGap:hover { border-color: var(--accent); }
+.reelSlide.in-focus,
+.reelGap.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px var(--dir-glow-lo);
+}
+.reelGap.focused { transform: translateY(-2px); }
+
+.reelThumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--radius) - 1px);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--dir-line);
+}
+.reelThumb img, .reelThumb video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.reelThumb.awaiting {
+  display: flex; align-items: center; justify-content: center;
+  border-style: dashed;
+  background: var(--panel-2, #000);
+  color: var(--fg-faint);
+  font-size: 9px; letter-spacing: 0.1em; text-align: center;
+}
+
+/* dashed placeholder for an un-authored gap */
+.reelGap .gapVoid {
+  width: 100%; aspect-ratio: 16 / 9;
+  border: 1px dashed var(--accent-dim);
+  border-radius: calc(var(--radius) - 1px);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg-dim); font-size: 18px;
+  background: rgb(var(--accent-rgb) / 0.03);
+}
+.reelGap .gapSpin {
+  width: 100%; aspect-ratio: 16 / 9;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--accent-dim);
+  border-radius: calc(var(--radius) - 1px);
+  color: var(--accent);
+  background: rgb(var(--accent-rgb) / 0.05);
+}
+.reelGap .gapSpin .glyph { font-size: 18px; }
+.reelGap .gapSpin.spinning .glyph { animation: dirspin 1s steps(8) infinite; }
+@media (prefers-reduced-motion: reduce) { .reelGap .gapSpin.spinning .glyph { animation: none; } }
+.reelGap .gapFail {
+  width: 100%; aspect-ratio: 16 / 9;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--err);
+  border-radius: calc(var(--radius) - 1px);
+  color: var(--err); font-size: 20px;
+  background: rgb(var(--err-rgb) / 0.08);
+}
+
+.reelCap {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--fg-dim);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reelGap .reelCap.st-done   { color: var(--ok); }
+.reelGap .reelCap.st-failed { color: var(--err); }
+.reelGap .reelCap.st-generating,
+.reelGap .reelCap.st-queued { color: var(--accent); }
+
+@keyframes dirspin { to { transform: rotate(360deg); } }
+
+/* ============ STAGE ============ */
+#dirStage {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.15fr) minmax(360px, 1.55fr) minmax(220px, 1.15fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Keep both anchor frames visible while the (tall) composer column scrolls —
+   the whole point of Director Mode is seeing FROM and TO while you compose. */
+.director-mode #dirStageLeft,
+.director-mode #dirStageRight {
+  position: sticky;
+  top: 12px;
+  align-self: start;
+}
+
+/* big FROM / TO frames — film-gate border, gentle ease-to-centre */
+.dirFrame {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 420ms cubic-bezier(.22,.61,.36,1);
+}
+@media (prefers-reduced-motion: reduce) { .dirFrame { transition: none; } }
+.dirFrameImg {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 0 3px rgb(var(--shadow-rgb) / 0.55),
+    inset 0 0 0 4px var(--dir-line),
+    0 0 20px var(--dir-glow-lo);
+}
+.dirFrameImg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dirFrameImg.blank::after {
+  content: "no frame";
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--fg-faint); font-size: 12px; letter-spacing: 0.14em;
+}
+.dirFrameCap {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--fg-dim);
+  text-align: center;
+}
+.dirFrameCap .tag { color: var(--accent); }
+
+/* the flanking frames ease inward while a morph is generating */
+#director.state-generating #dirStageLeft  { transform: translateX(5%) scale(0.985); }
+#director.state-generating #dirStageRight { transform: translateX(-5%) scale(0.985); }
+@media (prefers-reduced-motion: reduce) {
+  #director.state-generating #dirStageLeft,
+  #director.state-generating #dirStageRight { transform: none; }
+}
+
+/* ---- centre column: preset chips · hero state · relocated composer ---- */
+#dirStageCenter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--dir-line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, var(--dir-panel-2), transparent 42%),
+    var(--dir-panel);
+  box-shadow: 0 0 24px var(--dir-glow-lo);
+  position: relative;
+}
+/* a connective gradient bracket tying the three columns together */
+#dirStage::before, #dirStage::after { content: none; }
+
+#dirPresetChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+#dirPresetChips .chipLabel {
+  font-size: 10px; letter-spacing: 0.14em; color: var(--fg-dim);
+  margin-right: 2px;
+}
+.dirChip {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 100ms ease, color 100ms ease;
+}
+.dirChip:hover:not(:disabled) { background: var(--accent); color: var(--bg); }
+.dirChip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- hero state layers (empty / generating / done) ---- */
+#dirHero { position: relative; }
+.dirLayer[hidden] { display: none; }
+
+/* EMPTY — dashed, breathing placeholder */
+#dirEmpty {
+  aspect-ratio: 16 / 9;
+  border: 1.5px dashed var(--accent-dim);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; padding: 16px;
+  color: var(--fg);
+  background: rgb(var(--accent-rgb) / 0.03);
+  animation: dirbreathe 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) { #dirEmpty { animation: none; } }
+#dirEmpty .big { font-size: 15px; letter-spacing: 0.08em; }
+#dirEmpty .sub { font-size: 12px; color: var(--fg-dim); max-width: 42ch; }
+@keyframes dirbreathe {
+  0%, 100% { border-color: var(--accent-dim); box-shadow: 0 0 0 var(--dir-glow-lo); }
+  50%      { border-color: var(--accent);     box-shadow: 0 0 18px var(--dir-glow-lo); }
+}
+
+/* GENERATING — 16:9 skeleton, determinate-ish progress, honest copy */
+#dirGenerating {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background:
+    linear-gradient(100deg,
+      rgb(var(--accent-rgb) / 0.04) 30%,
+      rgb(var(--accent-rgb) / 0.13) 50%,
+      rgb(var(--accent-rgb) / 0.04) 70%);
+  background-size: 220% 100%;
+  animation: dirsheen 1.9s linear infinite;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 18px; text-align: center;
+}
+@media (prefers-reduced-motion: reduce) { #dirGenerating { animation: none; } }
+@keyframes dirsheen { to { background-position: -220% 0; } }
+#dirGenerating .genCopy { font-size: 13px; color: var(--fg); letter-spacing: 0.04em; }
+#dirGenerating .genMeta { font-size: 11px; color: var(--fg-dim); }
+#dirGenerating .genBarWrap {
+  width: min(72%, 380px);
+  height: 6px;
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgb(var(--accent-rgb) / 0.05);
+}
+#dirGenerating .genBar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--dir-glow);
+  transition: width 900ms ease;
+}
+@media (prefers-reduced-motion: reduce) { #dirGenerating .genBar { transition: none; } }
+
+/* DONE — the clip loops over the composer, with scrubber + actions */
+#dirDone { display: flex; flex-direction: column; gap: 8px; }
+#dirDoneStage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--accent-dim);
+  box-shadow:
+    inset 0 0 0 3px rgb(var(--shadow-rgb) / 0.55),
+    0 0 22px var(--dir-glow-lo);
+}
+#dirDoneStage video { width: 100%; height: 100%; object-fit: cover; display: block; }
+#dirDoneStage .favBadge {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 16px; color: var(--accent-2);
+  text-shadow: 0 0 8px rgb(var(--accent-2-rgb) / calc(0.6 * var(--glow-alpha)));
+  pointer-events: none;
+}
+#dirScrub { width: 100%; accent-color: var(--accent); cursor: pointer; }
+#dirDoneActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#dirDoneActions .star.on { color: var(--accent-2); border-color: var(--accent-2); }
+#dirDoneNote { font-size: 11px; color: var(--fg-dim); flex: 1 1 100%; }
+
+/* ============ HUD (cost · credits · keys) ============ */
+#dirHud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 8px 12px;
+  border: 1px solid var(--dir-line);
+  border-radius: var(--radius);
+  background: var(--dir-panel);
+  font-size: 12px;
+}
+#dirHud .hudNum { color: var(--accent); text-shadow: 0 0 6px var(--dir-glow); font-size: 14px; }
+#dirHud .hudLabel { color: var(--fg-dim); font-size: 10px; letter-spacing: 0.12em; margin-right: 4px; }
+#dirHud .grow { flex: 1; }
+#dirHud #dirCredits.out { color: var(--err); text-shadow: none; }
+#dirKeys { color: var(--fg-dim); }
+#dirKeys kbd {
+  font-family: var(--mono);
+  border: 1px solid var(--dir-line);
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--accent);
+}
+
+/* ============ responsive ============ */
+@media (max-width: 900px) {
+  #dirStage { grid-template-columns: 1fr; }
+  #dirStageLeft, #dirStageRight { order: 3; }
+  #dirStageCenter { order: 1; }
+  #director.state-generating #dirStageLeft,
+  #director.state-generating #dirStageRight { transform: none; }
+}

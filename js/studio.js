@@ -634,6 +634,7 @@ function renderFilmstrip() {
   } else {
     els.detachNote.hidden = true;
   }
+  emitChange();
 }
 
 function buildSlideCard(slide, i) {
@@ -839,6 +840,7 @@ function ghint(text) {
 }
 
 function refreshGapCard(k) {
+  emitChange(); // alternate views (Director Mode) re-render on any gap change
   const old = els.filmstrip.querySelector(`.gapCard[data-key="${CSS.escape(k)}"]`);
   if (!old) { renderFilmstrip(); return; }
   const idx = state.slides.findIndex((s) => k.startsWith(s.uid + '::'));
@@ -1514,6 +1516,7 @@ async function verifyModels() {
 
 function updateSpendUI() {
   els.spendVal.textContent = fmtUsd(sessionSpend);
+  emitChange();
 }
 
 async function refreshCredits() {
@@ -2606,5 +2609,95 @@ window.addEventListener('pagehide', () => {
     try { db.saveProject(serializeProject()); } catch { /* best effort */ }
   }
 });
+
+// ------------------------------------------------------------------
+// controller seam — an alternate view (Director Mode / director.js)
+// drives the SAME engine (state, composer, generation, persistence).
+// No forked logic: the view reads reel()/currentKey(), calls select()/
+// generate()/regenerate(), and re-renders on onStudioChange(). The composer
+// itself (#composer, already a left-frame · fields · right-frame triptych)
+// is REUSED by relocating it in the DOM under CSS control.
+// ------------------------------------------------------------------
+const studioListeners = new Set();
+let emitScheduled = false;
+
+/** Subscribe to any engine change; returns an unsubscribe fn. */
+export function onStudioChange(cb) {
+  studioListeners.add(cb);
+  return () => studioListeners.delete(cb);
+}
+
+/** Coalesce bursts of mutations into one microtask notification. */
+function emitChange() {
+  if (emitScheduled || studioListeners.size === 0) return;
+  emitScheduled = true;
+  Promise.resolve().then(() => {
+    emitScheduled = false;
+    for (const cb of studioListeners) {
+      try { cb(); } catch { /* a view error must never break the engine */ }
+    }
+  });
+}
+
+export const StudioController = {
+  /** Ordered reel model: [{type:'slide'|'gap', ...}] for the whole deck. */
+  reel() {
+    const items = [];
+    state.slides.forEach((slide, i) => {
+      items.push({
+        type: 'slide', index: i, uid: slide.uid,
+        title: slide.title || `Slide ${i + 1}`,
+        missing: !!slide.missing,
+        imageUrl: imageUrls.get(slide.uid) || null,
+      });
+      if (i < state.slides.length - 1) {
+        const k = pairKey(slide.uid, state.slides[i + 1].uid);
+        const gap = state.gaps[k];
+        const reg = registryEntry((gap && gap.model) || state.settings.videoModel);
+        items.push({
+          type: 'gap', key: k, fromIndex: i, toIndex: i + 1,
+          status: gap ? gap.status : 'empty',
+          hasClip: !!(gap && gap.hasClip),
+          clipUrl: gap ? (clipUrls.get(gap.uid) || null) : null,
+          model: (gap && gap.model) || state.settings.videoModel,
+          modelLabel: reg ? reg.label : ((gap && gap.model) || state.settings.videoModel),
+          cost: gap && Number.isFinite(gap.costUsd) ? gap.costUsd : null,
+          estCost: estimateCost((gap && gap.model) || state.settings.videoModel, (gap && gap.durationSec) || state.settings.duration),
+          prompt: gap ? gap.prompt : '',
+          morphCapable: morphCapable(reg),
+          lastStatus: gap ? gap.lastStatus : '',
+          startedAt: gap ? gap.startedAt : null,
+          error: gap ? gap.error : null,
+        });
+      }
+    });
+    return items;
+  },
+  currentKey: () => composingKey,
+  isComposing: () => composingKey !== null && !els.composer.hidden,
+  select(k) { openComposer(k); },
+  close() { closeComposer(); },
+  /** Step to the adjacent gap in reel order (dir -1 | +1). */
+  selectAdjacent(dir) {
+    const gaps = this.reel().filter((it) => it.type === 'gap');
+    if (gaps.length === 0) return;
+    let idx = gaps.findIndex((g) => g.key === composingKey);
+    if (idx < 0) idx = dir > 0 ? -1 : gaps.length;
+    const next = gaps[Math.min(Math.max(idx + dir, 0), gaps.length - 1)];
+    if (next) openComposer(next.key);
+  },
+  generate() { onGenerateClick(); },
+  regenerate(k) { regenerateGap(k); },
+  settings: () => ({ ...state.settings }),
+  session: () => ({ spend: sessionSpend, outOfCredits }),
+  hasKey: () => client.hasKey,
+  imageUrl: (slideUid) => imageUrls.get(slideUid) || null,
+  clipUrlForGap: (k) => { const g = state.gaps[k]; return g ? (clipUrls.get(g.uid) || null) : null; },
+  models: () => MODEL_REGISTRY.concat(dynamicModels),
+  fmtUsd,
+  estimateCost,
+  /** The composer element the view relocates into its centre column. */
+  composerEl: () => els.composer,
+};
 
 boot();

@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>SlideMaker Studio</title>
+  <!-- pre-paint: set the saved skin + view mode BEFORE stylesheets paint (no flash) -->
+  <script>try{var t=localStorage.getItem('slidemaker.theme');if(t)document.documentElement.setAttribute('data-theme',t);var m=localStorage.getItem('slidemaker.mode');if(m==='director')document.documentElement.classList.add('director-mode');}catch(e){}</script>
   <link rel="stylesheet" href="css/studio.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <link rel="stylesheet" href="css/director.css">
 </head>
 <body>
 
@@ -13,6 +17,8 @@
   <header id="topbar">
     <h1 class="logo">SLIDEMAKER<span class="accent"> STUDIO</span> <span class="ver">v2.0 — PROMPT ENGINE v2</span></h1>
     <p class="tagline">// PER-TRANSITION MORPH AUTHORING — YOU SUPPLY INTENT, NEVER THE RULES</p>
+    <button id="btnDirectorToggle" class="sbtn" type="button" aria-pressed="false"
+            title="toggle the cinematic Director Mode view over the same engine"><span class="tw">&#10022;</span> NEW DESIGN</button>
     <a class="backlink" href="index.html">[ &#8592; PLAYER ]</a>
   </header>
 
@@ -40,6 +46,10 @@
       <span id="creditsVal">&#8212;</span>
     </div>
     <div class="sgroup grow"></div>
+    <div class="sgroup">
+      <label for="themeSelect">SKIN</label>
+      <select id="themeSelect" aria-label="Theme / skin"></select>
+    </div>
     <button id="btnKey" class="sbtn" type="button">[ KEY: NONE ]</button>
     <button id="btnAddImages" class="sbtn" type="button">[ + ADD IMAGES ]</button>
     <button id="btnExportDeck" class="sbtn" type="button">[ EXPORT DECK.JSON ]</button>
@@ -244,6 +254,72 @@
     </div>
   </section>
 
+  <!-- ============ DIRECTOR MODE (cinematic second view; same engine) ============
+       director.js re-parents the shared #composer section into #dirStageCenter
+       (between the preset chips + hero layers and below) so all composer fields,
+       lint, preview, passthrough and GENERATE keep working verbatim. -->
+  <div id="director" hidden aria-label="Director Mode">
+
+    <!-- REEL RAIL: slide · gap · slide · … (populated by director.js) -->
+    <div id="dirReel" role="list" aria-label="Reel"></div>
+
+    <!-- STAGE: FROM frame · centre (composer + state) · TO frame -->
+    <div id="dirStage">
+      <figure id="dirStageLeft" class="dirFrame">
+        <div id="dirLeftWrap" class="dirFrameImg blank"><img id="dirLeftImg" alt="slide before the transition" hidden></div>
+        <figcaption id="dirLeftCap" class="dirFrameCap"><span class="tag">FROM</span></figcaption>
+      </figure>
+
+      <div id="dirStageCenter">
+        <!-- one-click preset starters (director.js reuses Studio's recipes) -->
+        <div id="dirPresetChips" aria-label="Morph presets"></div>
+
+        <!-- hero state layers: only one shown at a time -->
+        <div id="dirHero">
+          <div id="dirEmpty" class="dirLayer">
+            <span class="big">DROP IMAGES TO BEGIN</span>
+            <span class="sub">Each image becomes a slide; every gap between two slides becomes a morph you direct one at a time.</span>
+          </div>
+
+          <div id="dirGenerating" class="dirLayer" hidden>
+            <div class="genCopy" id="dirGenCopy">Sending your two frames to the model&#8230;</div>
+            <div class="genBarWrap"><div class="genBar" id="dirGenBar"></div></div>
+            <div class="genMeta" id="dirGenElapsed">00:00 elapsed</div>
+            <div class="genMeta" id="dirGenMeta"></div>
+          </div>
+
+          <div id="dirDone" class="dirLayer" hidden>
+            <div id="dirDoneStage"></div>
+            <input id="dirScrub" type="range" min="0" max="1000" value="0" step="1" aria-label="scrub clip">
+            <div id="dirDoneActions">
+              <button id="dirReroll" class="sbtn small" type="button">[ RE-ROLL ]</button>
+              <button id="dirEdit" class="sbtn small" type="button">[ EDIT ]</button>
+              <button id="dirStar" class="sbtn small star" type="button">[ &#9734; FAVORITE ]</button>
+              <button id="dirPreview" class="sbtn small" type="button">[ PREVIEW FROM HERE ]</button>
+              <span id="dirDoneNote">RE-ROLL replaces the current clip in the engine (there is only one clip per morph — no fake version stack).</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- #composer (shared) is re-homed HERE by director.js -->
+      </div>
+
+      <figure id="dirStageRight" class="dirFrame">
+        <div id="dirRightWrap" class="dirFrameImg blank"><img id="dirRightImg" alt="slide after the transition" hidden></div>
+        <figcaption id="dirRightCap" class="dirFrameCap"><span class="tag">TO</span></figcaption>
+      </figure>
+    </div>
+
+    <!-- HUD: live per-morph cost + session spend + credits -->
+    <div id="dirHud">
+      <span id="dirCost"></span>
+      <span id="dirSpend"></span>
+      <span id="dirCredits"></span>
+      <span class="grow"></span>
+      <span id="dirKeys"><kbd>&#8592;</kbd><kbd>&#8594;</kbd> morph &#183; <kbd>Enter</kbd> generate &#183; <kbd>P</kbd>/<kbd>Space</kbd> play &#183; <kbd>Esc</kbd> close</span>
+    </div>
+  </div>
+
   <!-- ============ PREVIEW MODAL (reuses Player) ============ -->
   <div id="previewModal" hidden>
     <div id="pvBox">
@@ -295,6 +371,11 @@
   <input id="filePicker" type="file" accept="image/*" multiple hidden>
   <input id="projectPicker" type="file" accept=".json,application/json" hidden>
 
+  <script type="module">
+    import { initTheme } from "./js/theme.js";
+    initTheme();
+  </script>
   <script type="module" src="js/studio.js"></script>
+  <script type="module" src="js/director.js"></script>
 </body>
 </html>

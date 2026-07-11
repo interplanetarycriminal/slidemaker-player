@@ -1,0 +1,197 @@
+/* ============================================================
+   SlideMaker — THEME / SKIN palettes
+   Each skin overrides the semantic token layer defined in
+   player.css :root. Selected via  <html data-theme="ID">.
+   Default (no attribute) = phosphor (values live in player.css);
+   the phosphor block below restates them so an explicit
+   data-theme="phosphor" is identical to the default.
+
+   Every block defines the FULL token set so nothing silently
+   falls back. Legacy aliases (--phos, --acc, ...) follow the
+   semantic tokens automatically — themes never touch them.
+
+   Light skins (paper, solarpunk) set --scan-alpha:0 and
+   --glow-alpha:0 so scanlines and CRT glow are fully disabled.
+   ============================================================ */
+
+/* ---------------- 1 · PHOSPHOR (default) ---------------- */
+:root[data-theme="phosphor"] {
+  --bg:            #050805;
+  --panel:         #08120a;
+  --panel-2:       #020603;
+  --fg:            #39ff6b;
+  --fg-dim:        #1e8f43;
+  --fg-faint:      #0f3d20;
+  --accent:        #39ff6b;
+  --accent-dim:    #1e8f43;
+  --accent-faint:  #0f3d20;
+  --accent-2:      #ffb347;
+  --err:           #ff5f56;
+  --ok:            #39ff6b;
+  --accent-rgb:    57 255 107;
+  --accent-2-rgb:  255 179 71;
+  --err-rgb:       255 95 86;
+  --ok-rgb:        57 255 107;
+  --scan-rgb:      210 255 220;
+  --shadow-rgb:    0 0 0;
+  --scan-alpha:    1;
+  --glow-alpha:    1;
+  --vignette-alpha:1;
+  --radius:        2px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------------- 2 · AMBER (classic Studio) ---------------- */
+:root[data-theme="amber"] {
+  --bg:            #080502;
+  --panel:         #120c04;
+  --panel-2:       #0a0702;
+  --fg:            #ffb347;
+  --fg-dim:        #a06e2c;
+  --fg-faint:      #3a2a12;
+  --accent:        #ffb347;
+  --accent-dim:    #a06e2c;
+  --accent-faint:  #3a2a12;
+  --accent-2:      #39ff6b;
+  --err:           #ff5f56;
+  --ok:            #39ff6b;
+  --accent-rgb:    255 179 71;
+  --accent-2-rgb:  57 255 107;
+  --err-rgb:       255 95 86;
+  --ok-rgb:        57 255 107;
+  --scan-rgb:      255 224 176;
+  --shadow-rgb:    0 0 0;
+  --scan-alpha:    1;
+  --glow-alpha:    1;
+  --vignette-alpha:1;
+  --radius:        2px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------------- 3 · BLUEPRINT (navy / cyan, technical) ---------------- */
+:root[data-theme="blueprint"] {
+  --bg:            #0a1626;
+  --panel:         #0e1e33;
+  --panel-2:       #081120;
+  --fg:            #cfe6ff;
+  --fg-dim:        #7fa6cf;
+  --fg-faint:      #24405f;
+  --accent:        #38bdf8;
+  --accent-dim:    #1d6f9c;
+  --accent-faint:  #123549;
+  --accent-2:      #7dd3fc;
+  --err:           #ff6b6b;
+  --ok:            #4ade80;
+  --accent-rgb:    56 189 248;
+  --accent-2-rgb:  125 211 252;
+  --err-rgb:       255 107 107;
+  --ok-rgb:        74 222 128;
+  --scan-rgb:      200 230 255;
+  --shadow-rgb:    3 9 20;
+  --scan-alpha:    0.4;
+  --glow-alpha:    0.5;
+  --vignette-alpha:0.7;
+  --radius:        2px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------------- 4 · PAPER (light, editorial — NO scan/glow) ---------------- */
+:root[data-theme="paper"] {
+  --bg:            #f4efe6;
+  --panel:         #eae3d6;
+  --panel-2:       #e0d8c8;
+  --fg:            #1a1a1a;
+  --fg-dim:        #4a4640;
+  --fg-faint:      #837b6e;
+  --accent:        #b3402f;
+  --accent-dim:    #8f3324;
+  --accent-faint:  #c99a8f;
+  --accent-2:      #8a6d3b;
+  --err:           #c0392b;
+  --ok:            #2f7d4f;
+  --accent-rgb:    179 64 47;
+  --accent-2-rgb:  138 109 59;
+  --err-rgb:       192 57 43;
+  --ok-rgb:        47 125 79;
+  --scan-rgb:      210 255 220;
+  --shadow-rgb:    40 34 28;
+  --scan-alpha:    0;
+  --glow-alpha:    0;
+  --vignette-alpha:0;
+  --radius:        3px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------------- 5 · SYNTHWAVE (indigo / magenta, glow HIGH) ---------------- */
+:root[data-theme="synthwave"] {
+  --bg:            #1a0b2e;
+  --panel:         #241041;
+  --panel-2:       #150826;
+  --fg:            #f7c6ef;
+  --fg-dim:        #b06ba3;
+  --fg-faint:      #5a3a63;
+  --accent:        #ff4fd8;
+  --accent-dim:    #b3379a;
+  --accent-faint:  #4d2247;
+  --accent-2:      #22d3ee;
+  --err:           #ff5f8f;
+  --ok:            #6ef2c0;
+  --accent-rgb:    255 79 216;
+  --accent-2-rgb:  34 211 238;
+  --err-rgb:       255 95 143;
+  --ok-rgb:        110 242 192;
+  --scan-rgb:      255 200 245;
+  --shadow-rgb:    10 2 20;
+  --scan-alpha:    0.5;
+  --glow-alpha:    1.2;
+  --vignette-alpha:0.85;
+  --radius:        2px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------------- 6 · SOLARPUNK (light-ish, organic — NO scan/glow) ---------------- */
+:root[data-theme="solarpunk"] {
+  --bg:            #eef3e2;
+  --panel:         #e2ead0;
+  --panel-2:       #d6e0c0;
+  --fg:            #1f3324;
+  --fg-dim:        #4f6b57;
+  --fg-faint:      #86977f;
+  --accent:        #2f7d4f;
+  --accent-dim:    #24603c;
+  --accent-faint:  #a9c6b0;
+  --accent-2:      #d9a441;
+  --err:           #c0533a;
+  --ok:            #2f7d4f;
+  --accent-rgb:    47 125 79;
+  --accent-2-rgb:  217 164 65;
+  --err-rgb:       192 83 58;
+  --ok-rgb:        47 125 79;
+  --scan-rgb:      210 255 220;
+  --shadow-rgb:    30 40 28;
+  --scan-alpha:    0;
+  --glow-alpha:    0;
+  --vignette-alpha:0;
+  --radius:        6px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---- light skins use the system sans stack (editorial / organic) ---- */
+:root[data-theme="paper"] body,
+:root[data-theme="paper"] button,
+:root[data-theme="paper"] input,
+:root[data-theme="paper"] select,
+:root[data-theme="paper"] textarea,
+:root[data-theme="solarpunk"] body,
+:root[data-theme="solarpunk"] button,
+:root[data-theme="solarpunk"] input,
+:root[data-theme="solarpunk"] select,
+:root[data-theme="solarpunk"] textarea {
+  font-family: var(--sans);
+}

@@ -157,6 +157,62 @@ Test the fixed grammar module with Node (pure ESM, no browser needed):
 node player/test/grammar.test.mjs
 ```
 
+### Director Mode — a cinematic second view
+
+The Studio topbar has a **`✦ NEW DESIGN`** toggle that flips into **Director
+Mode**: a flagship, cinematic view over the *exact same engine* (no forked
+generation, polling, persistence or composer). It renders a horizontal **reel
+rail** (slide · gap · slide · … with live per-gap status: dashed = un-authored,
+spinner + elapsed = generating, looping clip with hover-scrub = done) and a
+three-column **hero stage** — big **FROM** frame · the *relocated* composer ·
+big **TO** frame. The composer is the same DOM node moved into the centre
+column, so every field, lint, preview, passthrough and `[ GENERATE ]` work
+verbatim, and toggling between views never loses composer state.
+
+Above the composer sit **preset chips** (the five built-in morph recipes as
+one-click starters — so non-typers get a good morph with zero typing) and a
+**state choreography** layer: a breathing dashed placeholder when empty, a
+16:9 skeleton with a determinate-ish progress bar + rotating honest copy while
+generating (the flanking frames gently ease toward centre), and the looping
+clip with a scrubber and **RE-ROLL / EDIT / ★ / PREVIEW-FROM-HERE** actions
+when done (RE-ROLL is labelled honestly — it *replaces* the single clip, there
+is no fake take-stack). Live per-morph cost + session spend + credits show in
+a HUD. Keyboard (director view, when not typing): `←`/`→` step morphs, `Enter`
+generates, `P`/`Space` play/pause the done clip, `Esc` closes the composer.
+
+The chosen view persists in `localStorage` (`slidemaker.mode`) and is applied
+by a pre-paint `<head>` snippet, so reloads don't flash the classic UI. Director
+Mode is themed entirely by the shared token system — dark skins get glassy
+panels and accent glow; light skins (`paper`, `solarpunk`) render flat.
+
+## Themes / skins
+
+Both the player and Studio share a **skin system** (zero-dependency, offline).
+Pick a skin from the `SKIN` dropdown — top-right on the player landing, on the
+Studio settings bar. Six skins ship:
+
+| id          | look                                             |
+| ----------- | ------------------------------------------------ |
+| `phosphor`  | default — black + phosphor green, CRT on         |
+| `amber`     | the classic amber Studio look, CRT on            |
+| `blueprint` | deep navy + cyan, technical/schematic            |
+| `paper`     | light editorial — ink on off-white, oxblood, flat |
+| `synthwave` | indigo + magenta/cyan, heavy glow                |
+| `solarpunk` | light-ish cream + forest green + gold, soft/flat |
+
+The choice is saved in `localStorage` under `slidemaker.theme` and applied via
+`<html data-theme="…">`. A tiny inline snippet in each page `<head>` reads the
+saved skin **before** the stylesheets paint, so reloads don't flash the default.
+
+Colours/effects come from a semantic token layer in
+[`css/player.css`](css/player.css) (`--bg`, `--fg`, `--accent`, `--accent-rgb`,
+`--scan-alpha`, `--glow-alpha`, `--vignette-alpha`, …); each skin overrides those
+tokens in [`css/themes.css`](css/themes.css). Light skins set `--scan-alpha` and
+`--glow-alpha` to `0`, disabling scanlines and glow. Legacy var names
+(`--phos`, `--acc`, …) are kept as aliases, so no other code had to change. To
+add a skin: append a `:root[data-theme="myskin"] { … }` block in `themes.css`
+and an entry to `THEMES` in [`js/theme.js`](js/theme.js).
+
 ## Deploy to GitHub Pages
 
 1. Push this folder's contents to a public repo (deck assets in `decks/` are

@@ -5,12 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>SlideMaker OS</title>
+  <!-- pre-paint: set the saved skin BEFORE stylesheets paint (no flash) -->
+  <script>try{var t=localStorage.getItem('slidemaker.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
   <link rel="stylesheet" href="css/player.css">
+  <link rel="stylesheet" href="css/themes.css">
 </head>
 <body>
 
   <!-- ============ LANDING: retro-terminal loader ============ -->
   <section id="landing">
+    <div id="themeBar">
+      <label for="themeSelect">SKIN</label>
+      <select id="themeSelect" aria-label="Theme / skin"></select>
+    </div>
     <div class="term">
       <pre id="bootLines" aria-live="polite"></pre>
 
@@ -68,6 +75,10 @@
     </div>
   </section>
 
+  <script type="module">
+    import { initTheme } from "./js/theme.js";
+    initTheme();
+  </script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
