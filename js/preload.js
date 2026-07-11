@@ -116,12 +116,15 @@ export class Preloader extends EventTarget {
       const url = resolveSrc(slide.image.src, this.assetBase);
       const img = new Image();
       img.decoding = 'async';
-      img.src = url;
-      try {
-        await img.decode();
-      } catch (err) {
-        throw new Error(`slide image ${slide.id || i} failed to load/decode (${truncate(url)})`);
-      }
+      // Gate on 'load', not decode(): decode() rides the frame scheduler and
+      // never settles while the tab is hidden (user switches tabs mid-preload).
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error(`slide image ${slide.id || i} failed to load (${truncate(url)})`));
+        img.src = url;
+      });
+      // Best-effort pre-rasterize; harmless if it never settles.
+      img.decode().catch(() => {});
       this.images[i] = img;
       loaded += 1;
       this.emitProgress('IMAGES', loaded, slides.length);

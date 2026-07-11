@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "deckId": "the-source-code",
   "title": "THE SOURCE CODE",
-  "createdAt": "2026-07-11T04:36:10.624Z",
+  "createdAt": "2026-07-11T05:00:18.141Z",
   "generator": "slidemaker-pipeline@1.0.0",
   "frameWidth": 1280,
   "frameHeight": 720,
@@ -163,11 +163,233 @@
       }
     }
   ],
-  "transitions": [],
+  "transitions": [
+    {
+      "fromIndex": 0,
+      "toIndex": 1,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-01-02.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-01-02-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The green text character by character shifts into the glowing computer monitors of the messy bedroom.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 1,
+      "toIndex": 2,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-02-03.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-02-03-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The cluster of flickering monitors zooms out to reveal the full wooden desk and the person holding the game controller.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 2,
+      "toIndex": 3,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-03-04.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-03-04-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The CRT screen on the desk pulses and expands, transforming the game into the 'Confirm' dialog box.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 3,
+      "toIndex": 4,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-04-05.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-04-05-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The glowing pixel hand on the screen stretches out and morphs into the dithered 'Creation of Adam' hand reaching for the window.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 4,
+      "toIndex": 5,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-05-06.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-05-06-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The 'PROJECT.EXE' window grows large and becomes the rectangular portal looking out into the green Windows-style landscape.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 5,
+      "toIndex": 6,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-06-07.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-06-07-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The camera moves through the portal, tilting upward from the tiled floor to the person sitting on the ceiling tiles looking at the sky.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 6,
+      "toIndex": 7,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-07-08.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-07-08-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The person on the ceiling drops down, landing softly as the scene seamlessly morphs into the friends sitting on the grassy hill.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 7,
+      "toIndex": 8,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-08-09.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-08-09-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The blue sky grid above the hill zooms in quickly, the tiles melting into the glass and moss-filled components of the PORSCHE watch.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 8,
+      "toIndex": 9,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-09-10.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-09-10-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The interior watch gears rotate to become the winding river and valley city skyline.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 9,
+      "toIndex": 10,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-10-11.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-10-11-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The river surface ripples and stretches forward, turning into the path through the crystalline archways as the dirt bike emerges.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 10,
+      "toIndex": 11,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-11-12.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-11-12-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The dirt bike continues forward, turning into the car driving through the glowing cyberpunk city at night.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 11,
+      "toIndex": 12,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-12-13.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-12-13-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The car dashboard lights defocus, rearranging their shapes into the buttons and screen of the SONY MG+ device.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    },
+    {
+      "fromIndex": 12,
+      "toIndex": 13,
+      "forward": {
+        "src": "decks/the-source-code/transitions/t-13-14.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "reverse": {
+        "src": "decks/the-source-code/transitions/t-13-14-rev.mp4",
+        "mimeType": "video/mp4",
+        "durationSec": 4
+      },
+      "prompt": "The SONY device slides away, replaced by the retro computers of the final slide as the 'Think Different' headline fades in.",
+      "model": "alibaba/wan-2.7",
+      "costUsd": 0.5
+    }
+  ],
   "meta": {
     "imageTrack": "b",
-    "videoModel": "google/veo-3.1-lite",
-    "totalCostUsd": 0.4857,
+    "videoModel": "alibaba/wan-2.7",
+    "totalCostUsd": 8.5553,
     "gamma": null
   }
 }

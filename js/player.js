@@ -150,7 +150,12 @@ export class Player extends EventTarget {
   }
 
   videoFailed() {
-    if (this.pair) this.preloader.markFailed(this.pair.from, this.pair.to, this.pair.dir);
+    // Only a real media error (decode/network) permanently retires the clip.
+    // Transient play() rejections (backgrounded tab, interrupted play) keep it
+    // available for the next attempt — the crossfade below still rescues THIS one.
+    if (this.pair && this.video.error) {
+      this.preloader.markFailed(this.pair.from, this.pair.to, this.pair.dir);
+    }
     const target = this.target;
     const state = this.state;
     this.mode = null;
