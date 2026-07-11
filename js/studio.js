@@ -1,15 +1,18 @@
-// js/studio.js — SlideMaker Studio: per-transition morph authoring.
+// js/studio.js — SlideMaker Studio v2: per-transition morph authoring
+// with the Prompt Engine v2 (camera-first grammar, full model catalog,
+// progressive-disclosure composer, morph recipes).
 //
 // The grammar module (js/grammar.js) is the FIXED quality boundary — this app
-// only ever collects intent (subject / verb / connective / destination /
-// camera move) and feeds it through assemblePrompt/wrapRawPrompt/lintPrompt.
+// only ever collects intent and feeds it through assemblePrompt /
+// wrapRawPrompt / lintPrompt / lintDominantAction / lintFramePair.
 //
 // Zero dependencies. Network: openrouter.ai only. All URLs relative.
 
 import {
-  PHYSICAL_VERBS, CONNECTIVES, CAMERA_MOVES, MATCH_HINTS,
+  PHYSICAL_VERBS, CONNECTIVES, TEXTURES, ANCHOR_SUGGESTIONS, MOTION_LEVELS,
+  LIGHTING_DEFAULT, CAMERA_MOVES, MATCH_HINTS, NEGATIVE_DEFAULT,
   CONTRACT_PREFIX, CONTRACT_SUFFIX,
-  assemblePrompt, wrapRawPrompt, lintPrompt,
+  assemblePrompt, wrapRawPrompt, lintPrompt, lintDominantAction, lintFramePair,
 } from './grammar.js';
 import { OpenRouterClient, OutOfCreditsError } from './openrouter-client.js';
 import * as db from './studio-db.js';
@@ -20,31 +23,129 @@ import { Player } from './player.js';
 // ------------------------------------------------------------------
 
 const KEY_STORAGE = 'slidemaker.openrouter.key';
-const GENERATOR = 'slidemaker-studio@1.0.0';
+const GENERATOR = 'slidemaker-studio@2.0.0';
 const FRAME_W = 1280;
 const FRAME_H = 720;
 const POLL_MS = 15000;
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 const MAX_CONCURRENT = 2;
-const CUSTOM_VERB = '__custom__';
+const CUSTOM = '__custom__';
+const NONE = '';
+const DEFAULT_CFG = 8;
+const LINT_W = 64;   // frame-pair lint sample canvas
+const LINT_H = 36;
 
 /**
- * Hardcoded model registry — verified against GET /videos/models at load.
- * pricePerSec from observed billing; billFloorSec = minimum seconds BILLED
- * (observed live: kling billed a 3s request as 5s; wan billed 4s as 5s —
- * the delivered clip still honors the requested duration).
+ * MODEL_REGISTRY v2 — static knowledge table for the FULL OpenRouter video
+ * catalog (verified live 2026-07-11), merged at load with GET /videos/models
+ * for availability + supported durations. New catalog models we don't know
+ * appear automatically in an UNVERIFIED tier.
+ *
+ * pricePerSec = per-second 720p SILENT price (seedance token prices are
+ * already folded into pricePerSec). billFloorSec = minimum seconds BILLED
+ * (observed live: kling-v3.0-pro/std and wan-2.7 bill 5s min; the delivered
+ * clip still honors the requested duration).
+ *
+ * tier:
+ *   'morph'      — first+last frame: true morph lock between the two slides
+ *   'firstframe' — first frame only: clip animates slide N, playback then
+ *                  crossfades into slide N+1 (no last-frame lock)
+ *   'unusable'   — cannot condition on images at all
+ *
+ * passthrough — which provider knobs this model accepts (mapped key names),
+ * sent via createVideoJob({ provider }). omitSeed: all kwaivgi/kling* models
+ * reject a seed (catalog seed:false).
  */
+const PASS_NONE = { negative: null, cfg: null, enhance: null, conditioning: null };
+const PASS_KLING = { negative: 'negative_prompt', cfg: 'cfg_scale', enhance: null, conditioning: null };
+const PASS_NEG = { negative: 'negative_prompt', cfg: null, enhance: null, conditioning: null };
+const PASS_VEO = { negative: 'negativePrompt', cfg: null, enhance: 'enhancePrompt', conditioning: 'conditioningScale' };
+
 const MODEL_REGISTRY = [
-  { id: 'kwaivgi/kling-v3.0-pro', label: 'KLING 3.0 PRO', pricePerSec: 0.112, billFloorSec: 5, note: 'RECOMMENDED — first/last-frame native, 3-15s pacing (billed 5s min)' },
-  { id: 'kwaivgi/kling-v3.0-std', label: 'KLING 3.0 STD', pricePerSec: 0.084, billFloorSec: 5, note: 'Kling look, lighter price (billed 5s min)' },
-  { id: 'alibaba/wan-2.7',      label: 'WAN 2.7',      pricePerSec: 0.10,  billFloorSec: 5, note: 'best prompt adherence in our bake-off' },
-  { id: 'google/veo-3.1-lite',  label: 'VEO 3.1 LITE', pricePerSec: 0.03,  billFloorSec: 0, note: 'draft/value' },
-  { id: 'bytedance/seedance-2.0', label: 'SEEDANCE 2.0', pricePerSec: 0.151, billFloorSec: 0, note: 'alternative look' },
+  // ---------------- MORPH (first+last frame) ----------------
+  { id: 'kwaivgi/kling-v3.0-pro', label: 'KLING 3.0 PRO', tier: 'morph', pricePerSec: 0.112, billFloorSec: 5,
+    passthrough: PASS_KLING, omitSeed: true,
+    note: 'RECOMMENDED — first/last-frame native, 3-15s pacing (billed 5s min)' },
+  { id: 'kwaivgi/kling-v3.0-std', label: 'KLING 3.0 STD', tier: 'morph', pricePerSec: 0.084, billFloorSec: 5,
+    passthrough: PASS_KLING, omitSeed: true,
+    note: 'Kling look, lighter price (billed 5s min)' },
+  { id: 'kwaivgi/kling-video-o1', label: 'KLING VIDEO O1', tier: 'morph', pricePerSec: 0.112, billFloorSec: 0,
+    durations: [5, 10], passthrough: PASS_NEG, omitSeed: true,
+    note: 'Kling reasoning tier — 5s/10s only' },
+  { id: 'alibaba/wan-2.7', label: 'WAN 2.7', tier: 'morph', pricePerSec: 0.10, billFloorSec: 5,
+    passthrough: PASS_NEG, omitSeed: false,
+    note: 'best prompt adherence in our bake-off (billed 5s min)' },
+  { id: 'google/veo-3.1-lite', label: 'VEO 3.1 LITE', tier: 'morph', pricePerSec: 0.03, billFloorSec: 0,
+    durations: [4, 6, 8], passthrough: PASS_VEO, omitSeed: false,
+    note: 'draft/value' },
+  { id: 'google/veo-3.1-fast', label: 'VEO 3.1 FAST', tier: 'morph', pricePerSec: 0.08, billFloorSec: 0,
+    durations: [4, 6, 8], passthrough: PASS_VEO, omitSeed: false,
+    note: 'fast Veo tier' },
+  { id: 'google/veo-3.1', label: 'VEO 3.1', tier: 'morph', pricePerSec: 0.20, billFloorSec: 0,
+    durations: [4, 6, 8], passthrough: PASS_VEO, omitSeed: false,
+    note: 'flagship' },
+  { id: 'bytedance/seedance-1-5-pro', label: 'SEEDANCE 1.5 PRO', tier: 'morph', pricePerSec: 0.02592, billFloorSec: 0,
+    durations: [4, 5, 6, 7, 8, 9, 10, 11, 12], passthrough: PASS_NONE, omitSeed: false,
+    note: 'CHEAPEST — unproven quality (token-priced, folded into $/s)' },
+  { id: 'bytedance/seedance-2.0-fast', label: 'SEEDANCE 2.0 FAST', tier: 'morph', pricePerSec: 0.121, billFloorSec: 0,
+    passthrough: PASS_NONE, omitSeed: false,
+    note: 'alternative look, fast tier (token-priced, folded into $/s)' },
+  { id: 'bytedance/seedance-2.0', label: 'SEEDANCE 2.0', tier: 'morph', pricePerSec: 0.151, billFloorSec: 0,
+    passthrough: PASS_NONE, omitSeed: false,
+    note: 'alternative look (token-priced, folded into $/s)' },
+  // ---------------- ANIMATE ONLY (first frame; ends in crossfade) ----------------
+  { id: 'alibaba/happyhorse-1.1', label: 'HAPPYHORSE 1.1', tier: 'firstframe', pricePerSec: 0.0988, billFloorSec: 0,
+    passthrough: PASS_NONE, omitSeed: false,
+    note: 'animates slide N; no last-frame lock — playback crossfades to N+1' },
+  { id: 'alibaba/happyhorse-1.0', label: 'HAPPYHORSE 1.0', tier: 'firstframe', pricePerSec: 0.0988, billFloorSec: 0,
+    passthrough: PASS_NONE, omitSeed: false,
+    note: 'animates slide N; no last-frame lock — playback crossfades to N+1' },
+  { id: 'x-ai/grok-imagine-video', label: 'GROK IMAGINE', tier: 'firstframe', pricePerSec: 0.07, billFloorSec: 0,
+    durations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], passthrough: PASS_NONE, omitSeed: false,
+    note: 'animates slide N (1-15s); no last-frame lock' },
+  { id: 'alibaba/wan-2.6', label: 'WAN 2.6', tier: 'firstframe', pricePerSec: 0.10, billFloorSec: 0,
+    durations: [5, 10], passthrough: PASS_NEG, omitSeed: false,
+    note: 'animates slide N (5s/10s); no last-frame lock' },
+  { id: 'minimax/hailuo-2.3', label: 'HAILUO 2.3', tier: 'firstframe', pricePerSec: null, billFloorSec: 0,
+    durations: [6, 10], passthrough: PASS_NONE, omitSeed: false,
+    disabledReason: '1080p-only — frame dims mismatch',
+    note: '1080p-only output does not match our 1280x720 frames' },
+  // ---------------- UNUSABLE ----------------
+  { id: 'openai/sora-2-pro', label: 'SORA 2 PRO', tier: 'unusable', pricePerSec: null, billFloorSec: 0,
+    passthrough: PASS_NONE, omitSeed: false,
+    disabledReason: 'no image input support',
+    note: 'cannot condition on images at all' },
 ];
+
+const TIER_GROUPS = [
+  { tier: 'morph', label: '— MORPH (first+last frame) —' },
+  { tier: 'firstframe', label: '— ANIMATE ONLY (first frame; ends in crossfade) —' },
+  { tier: 'unverified', label: '— UNVERIFIED (new in catalog) —' },
+  { tier: 'unusable', label: '— UNAVAILABLE —' },
+];
+
 const FALLBACK_DURATIONS = [4];
 const DEFAULT_DURATION = 4;
 
 const SPINNER_FRAMES = ['|', '/', '—', '\\'];
+
+/** Built-in morph recipes (research-grounded starters). Not deletable. */
+const BUILTIN_RECIPES = [
+  { id: 'builtin:graphic-match-dissolve', name: 'Graphic-Match Dissolve', builtin: true,
+    fields: { cameraId: 'static', cameraPhrase: '', verb: 'dissolves into',
+      anchor: "the subject's silhouette", texture: 'fusing seamlessly', motion: 'slow', verbosity: 'directed' } },
+  { id: 'builtin:camera-dive', name: 'Camera Dive', builtin: true,
+    fields: { cameraId: 'dolly-in', cameraPhrase: '', verb: 'grows into',
+      anchor: 'the frame center', motion: 'measured', verbosity: 'directed' } },
+  { id: 'builtin:whip-pan-hide', name: 'Whip-Pan Hide', builtin: true,
+    fields: { cameraId: 'whip-pan', cameraPhrase: '', verb: 'splinters into',
+      texture: 'scattering into particles and reassembling', motion: 'whip', verbosity: 'directed' } },
+  { id: 'builtin:rack-focus-reveal', name: 'Rack-Focus Reveal', builtin: true,
+    fields: { cameraId: 'rack-focus', cameraPhrase: '', verb: 'drifts into',
+      motion: 'glacial', verbosity: 'directed' } },
+  { id: 'builtin:minimal-trust-frames', name: 'Minimal — Trust the Frames', builtin: true,
+    fields: { verbosity: 'minimal', anchor: 'the frame center' } },
+];
 
 // ------------------------------------------------------------------
 // dom
@@ -64,16 +165,44 @@ const els = {
   btnCloseComposer: $('btnCloseComposer'),
   composerLeft: $('composerLeft'), composerLeftCap: $('composerLeftCap'),
   composerRight: $('composerRight'), composerRightCap: $('composerRightCap'),
+  // recipes
+  recipeSelect: $('recipeSelect'), btnApplyRecipe: $('btnApplyRecipe'),
+  btnApplyRecipeAll: $('btnApplyRecipeAll'), btnSaveRecipe: $('btnSaveRecipe'),
+  btnDeleteRecipe: $('btnDeleteRecipe'),
+  // essentials
+  fCamera: $('fCamera'), fCameraCustom: $('fCameraCustom'), cameraHint: $('cameraHint'),
   fSubject: $('fSubject'), fVerb: $('fVerb'), fVerbCustom: $('fVerbCustom'),
-  fConnective: $('fConnective'), fDestination: $('fDestination'),
-  fCamera: $('fCamera'), cameraHint: $('cameraHint'),
+  fConnective: $('fConnective'), fConnectiveCustom: $('fConnectiveCustom'),
+  fDestination: $('fDestination'),
+  fldSubject: $('fldSubject'), fldVerb: $('fldVerb'),
+  fldConnective: $('fldConnective'), fldDestination: $('fldDestination'),
+  essMinimalNote: $('essMinimalNote'),
+  // direction
+  tierDirection: $('tierDirection'),
+  fAnchor: $('fAnchor'), anchorChips: $('anchorChips'),
+  fTexture: $('fTexture'), fTextureCustom: $('fTextureCustom'),
+  fMotion: $('fMotion'),
+  fLightingOn: $('fLightingOn'), fLightingText: $('fLightingText'),
+  fStyleTail: $('fStyleTail'),
   matchChips: $('matchChips'), chipHint: $('chipHint'),
-  promptPreview: $('promptPreview'), lintBox: $('lintBox'),
+  // fine control
+  tierFine: $('tierFine'),
+  fVerbosity: $('fVerbosity'), minimalNote: $('minimalNote'),
+  fBeat0: $('fBeat0'), fBeat1: $('fBeat1'), fBeat2: $('fBeat2'),
+  beatStamp0: $('beatStamp0'), beatStamp1: $('beatStamp1'), beatStamp2: $('beatStamp2'),
+  negWrap: $('negWrap'), fNegative: $('fNegative'), negNote: $('negNote'),
+  cfgWrap: $('cfgWrap'), fCfg: $('fCfg'), cfgVal: $('cfgVal'),
+  veoWrap: $('veoWrap'), fEnhance: $('fEnhance'),
+  fCondOn: $('fCondOn'), fCond: $('fCond'), condVal: $('condVal'),
+  // preview + lint + raw + go
+  promptPreview: $('promptPreview'), sentLine: $('sentLine'), lintBox: $('lintBox'),
   btnAdvanced: $('btnAdvanced'), rawWrap: $('rawWrap'), fRaw: $('fRaw'),
   btnGenerate: $('btnGenerate'), composerStatus: $('composerStatus'),
+  // preview modal
   previewModal: $('previewModal'), pvStage: $('pvStage'), pvSlide: $('pvSlide'),
   pvVideo: $('pvVideo'), pvFade: $('pvFade'), pvBack: $('pvBack'), pvNext: $('pvNext'),
   pvCounter: $('pvCounter'), pvClose: $('pvClose'),
+  // key drawer + pickers
   drawerScrim: $('drawerScrim'), keyDrawer: $('keyDrawer'), keyInput: $('keyInput'),
   keyState: $('keyState'), btnSaveKey: $('btnSaveKey'), btnTestKey: $('btnTestKey'),
   btnForgetKey: $('btnForgetKey'), keyReport: $('keyReport'), btnCloseDrawer: $('btnCloseDrawer'),
@@ -104,6 +233,9 @@ let importConfirmUntil = 0;
 const imageUrls = new Map();   // slide uid -> objectURL of normalized PNG
 const clipUrls = new Map();    // gap uid -> objectURL of mp4 blob
 const pollTimers = new Map();  // pairKey -> timeout id
+const framePairCache = new Map(); // pairKey -> {warnings,stats} | Promise
+let dynamicModels = [];        // UNVERIFIED entries discovered in the live catalog
+let userRecipes = [];          // recipes from IndexedDB (deletable)
 let queue = [];                // pairKeys with status "queued"
 let composingKey = null;
 let pvPlayer = null;
@@ -172,21 +304,97 @@ function showNote(msg) {
 }
 
 // ------------------------------------------------------------------
+// composer v2 defaults + prompt assembly helpers
+// ------------------------------------------------------------------
+
+function defaultComposer() {
+  return {
+    cameraId: CAMERA_MOVES[0].id, cameraPhrase: '',
+    subject: '', verb: PHYSICAL_VERBS[0], connective: 'revealing', destination: '',
+    texture: '', anchor: '', motion: 'slow',
+    lightingOn: true, lightingText: LIGHTING_DEFAULT,
+    styleTail: '', beatsTexts: ['', '', ''],
+    verbosity: 'directed',
+  };
+}
+
+function serializeComposer(c) {
+  return {
+    cameraId: c.cameraId || '', cameraPhrase: c.cameraPhrase || '',
+    subject: c.subject || '', verb: c.verb || '', connective: c.connective || '',
+    destination: c.destination || '', texture: c.texture || '', anchor: c.anchor || '',
+    motion: c.motion || '', lightingOn: c.lightingOn !== false,
+    lightingText: c.lightingText || '',
+    styleTail: c.styleTail || '',
+    beatsTexts: [0, 1, 2].map((i) => String((c.beatsTexts || [])[i] || '')),
+    verbosity: c.verbosity === 'minimal' ? 'minimal' : 'directed',
+  };
+}
+
+/** ESTABLISH/TRANSFORM/SETTLE windows: 25% / 50% / 25% of the duration. */
+function beatWindows(duration) {
+  const d = Number(duration) || DEFAULT_DURATION;
+  return [[0, d * 0.25], [d * 0.25, d * 0.75], [d * 0.75, d]];
+}
+
+function beatStampText(start, end) {
+  const f = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  return `[${f(start)}-${f(end)}]`;
+}
+
+/** beatsTexts + duration -> grammar beats array (all-empty = undefined). */
+function buildBeats(c, duration) {
+  const texts = Array.isArray(c.beatsTexts) ? c.beatsTexts : [];
+  if (!texts.some((t) => String(t || '').trim())) return undefined;
+  const w = beatWindows(duration);
+  const beats = [];
+  for (let i = 0; i < 3; i++) {
+    if (String(texts[i] || '').trim()) {
+      beats.push({ start: w[i][0], end: w[i][1], text: String(texts[i]) });
+    }
+  }
+  return beats;
+}
+
+/** Map a gap's composer record to grammar.assemblePrompt() input. */
+function composerToGrammar(gap, duration = state.settings.duration) {
+  const c = gap.composer;
+  return {
+    cameraId: c.cameraId, cameraPhrase: c.cameraPhrase,
+    subject: c.subject, verb: c.verb, connective: c.connective, destination: c.destination,
+    texture: c.texture, anchor: c.anchor, motion: c.motion,
+    lighting: c.lightingOn ? c.lightingText : '',
+    styleTail: c.styleTail,
+    beats: buildBeats(c, duration),
+    verbosity: c.verbosity,
+  };
+}
+
+function assembleGapPrompt(gap, duration = state.settings.duration) {
+  return gap.rawMode
+    ? wrapRawPrompt(gap.rawText)
+    : assemblePrompt(composerToGrammar(gap, duration));
+}
+
+// ------------------------------------------------------------------
 // persistence (autosave on every mutation)
 // ------------------------------------------------------------------
 
 function serializeGap(g) {
   return {
     uid: g.uid, fromUid: g.fromUid, toUid: g.toUid,
-    composer: {
-      subject: g.composer.subject || '',
-      verb: g.composer.verb || '',
-      connective: g.composer.connective || '',
-      destination: g.composer.destination || '',
-      cameraId: g.composer.cameraId || '',
-    },
+    composer: serializeComposer(g.composer),
     rawMode: !!g.rawMode, rawText: g.rawText || '',
     prompt: g.prompt || '',
+    negative: g.negative ?? NEGATIVE_DEFAULT,
+    cfg: Number.isFinite(Number(g.cfg)) ? Number(g.cfg) : DEFAULT_CFG,
+    enhance: !!g.enhance,
+    conditioning: Number.isFinite(Number(g.conditioning)) ? Number(g.conditioning) : null,
+    sent: (g.sent && typeof g.sent === 'object') ? { ...g.sent } : null,
     status: g.status, jobId: g.jobId ?? null,
     model: g.model ?? null, durationSec: g.durationSec ?? null,
     costUsd: g.costUsd ?? null, error: g.error ?? null,
@@ -198,7 +406,7 @@ function serializeProject() {
   const gaps = {};
   for (const [k, g] of Object.entries(state.gaps)) gaps[k] = serializeGap(g);
   return {
-    v: 1,
+    v: 2,
     title: state.title,
     createdAt: state.createdAt,
     settings: { ...state.settings },
@@ -232,9 +440,11 @@ function scheduleSave() {
 function newGap(fromUid, toUid) {
   return {
     uid: uid('gap'), fromUid, toUid,
-    composer: { subject: '', verb: PHYSICAL_VERBS[0], connective: 'revealing', destination: '', cameraId: CAMERA_MOVES[0].id },
+    composer: defaultComposer(),
     rawMode: false, rawText: '',
     prompt: '',
+    negative: NEGATIVE_DEFAULT, cfg: DEFAULT_CFG, enhance: false, conditioning: null,
+    sent: null,
     status: 'empty', jobId: null, model: null, durationSec: null,
     costUsd: null, error: null, startedAt: null, hasClip: false,
     lastStatus: null, pollTimedOut: false,
@@ -304,6 +514,10 @@ function setImageUrl(slideUid, blob) {
   const old = imageUrls.get(slideUid);
   if (old) { try { URL.revokeObjectURL(old); } catch { /* ignore */ } }
   imageUrls.set(slideUid, URL.createObjectURL(blob));
+  // the frame changed — any cached frame-pair lint touching it is stale
+  for (const key of [...framePairCache.keys()]) {
+    if (key.includes(slideUid)) framePairCache.delete(key);
+  }
 }
 
 function setClipUrl(gapUid, blob) {
@@ -480,6 +694,14 @@ function buildSlideCard(slide, i) {
   return card;
 }
 
+/** The model whose behavior this gap card should describe. */
+function gapEffectiveModel(gap) {
+  if ((gap.status === 'generating' || gap.status === 'done' || gap.status === 'queued') && gap.model) {
+    return gap.model;
+  }
+  return state.settings.videoModel;
+}
+
 function buildGapCard(i) {
   const from = state.slides[i];
   const to = state.slides[i + 1];
@@ -512,7 +734,7 @@ function buildGapCard(i) {
   switch (gap.status) {
     case 'empty': {
       card.appendChild(openBtn('[ COMPOSE ]'));
-      card.appendChild(ghint('morph unwritten'));
+      card.appendChild(ghint(gap.prompt ? 'prompt staged — open to review + generate' : 'morph unwritten'));
       break;
     }
     case 'queued': {
@@ -534,7 +756,7 @@ function buildGapCard(i) {
       card.appendChild(ghint(`${(gap.lastStatus || 'pending').toUpperCase()}${gap.pollTimedOut ? ' — POLL TIMEOUT, RELOAD TO RESUME' : ''}`));
       const cost = document.createElement('div');
       cost.className = 'costTag';
-      cost.textContent = `~${fmtUsd(estimateCost(gap.model, gap.durationSec))} · ${gap.model || ''}`;
+      cost.textContent = `~${estLabel(gap.model, gap.durationSec)} · ${gap.model || ''}`;
       card.appendChild(cost);
       break;
     }
@@ -566,7 +788,7 @@ function buildGapCard(i) {
       const regen = document.createElement('button');
       regen.type = 'button';
       regen.className = 'sbtn small';
-      regen.textContent = `[ REGENERATE ${fmtUsd(estimateCost(state.settings.videoModel, state.settings.duration))} ]`;
+      regen.textContent = `[ REGENERATE ${estLabel(state.settings.videoModel, state.settings.duration)} ]`;
       regen.addEventListener('click', (e) => { e.stopPropagation(); regenerateGap(k); });
       btns.appendChild(regen);
       card.appendChild(btns);
@@ -594,6 +816,15 @@ function buildGapCard(i) {
       break;
     }
     default: break;
+  }
+
+  // ANIMATE-ONLY models can't lock the last frame — say so, persistently.
+  const reg = registryEntry(gapEffectiveModel(gap));
+  if (reg && reg.tier !== 'unusable' && !morphCapable(reg)) {
+    const note = document.createElement('div');
+    note.className = 'ffnote';
+    note.textContent = `▲ animates slide ${i + 1} only — playback crossfades into slide ${i + 2}`;
+    card.appendChild(note);
   }
 
   card.addEventListener('click', () => openComposer(k));
@@ -626,30 +857,57 @@ function escapeHtml(s) {
 }
 
 // ------------------------------------------------------------------
-// composer
+// composer statics
 // ------------------------------------------------------------------
 
-function buildComposerStatics() {
-  // verbs (+ custom)
-  for (const v of PHYSICAL_VERBS) {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v;
-    els.fVerb.appendChild(o);
-  }
-  const custom = document.createElement('option');
-  custom.value = CUSTOM_VERB; custom.textContent = 'custom…';
-  els.fVerb.appendChild(custom);
+function addOption(sel, value, text) {
+  const o = document.createElement('option');
+  o.value = value;
+  o.textContent = text;
+  sel.appendChild(o);
+  return o;
+}
 
-  for (const c of CONNECTIVES) {
-    const o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    els.fConnective.appendChild(o);
+function buildComposerStatics() {
+  // camera moves (+ custom)
+  for (const m of CAMERA_MOVES) addOption(els.fCamera, m.id, m.label);
+  addOption(els.fCamera, CUSTOM, 'custom…');
+
+  // verbs (+ custom)
+  for (const v of PHYSICAL_VERBS) addOption(els.fVerb, v, v);
+  addOption(els.fVerb, CUSTOM, 'custom…');
+
+  // connectives (+ custom — v2 user ask)
+  for (const c of CONNECTIVES) addOption(els.fConnective, c, c);
+  addOption(els.fConnective, CUSTOM, 'custom…');
+
+  // textures ((none) default + custom)
+  addOption(els.fTexture, NONE, '(none)');
+  for (const t of TEXTURES) addOption(els.fTexture, t, t);
+  addOption(els.fTexture, CUSTOM, 'custom…');
+
+  // motion levels (default slow, (none) allowed)
+  for (const m of MOTION_LEVELS) addOption(els.fMotion, m.id, `${m.label} — "${m.phrase}"`);
+  addOption(els.fMotion, NONE, '(none)');
+
+  // lighting default text
+  els.fLightingText.value = LIGHTING_DEFAULT;
+
+  // anchor suggestion chips (click = fill the anchor field)
+  for (const s of ANCHOR_SUGGESTIONS) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = s;
+    chip.title = 'use this as the anchor';
+    chip.addEventListener('click', () => {
+      els.fAnchor.value = s;
+      updateComposerPreview();
+    });
+    els.anchorChips.appendChild(chip);
   }
-  for (const m of CAMERA_MOVES) {
-    const o = document.createElement('option');
-    o.value = m.id; o.textContent = m.label;
-    els.fCamera.appendChild(o);
-  }
+
+  // match-type coaching chips
   for (const h of MATCH_HINTS) {
     const chip = document.createElement('button');
     chip.type = 'button';
@@ -667,8 +925,90 @@ function buildComposerStatics() {
   }
 }
 
+// ------------------------------------------------------------------
+// composer open / fill / read
+// ------------------------------------------------------------------
+
 function slideIndexByUid(u) {
   return state.slides.findIndex((s) => s.uid === u);
+}
+
+/** value -> select+custom-input pair (select from list, or custom text). */
+function setSelectWithCustom(sel, customInput, list, value, fallback) {
+  const v = String(value || '');
+  if (list.includes(v)) {
+    sel.value = v;
+    customInput.hidden = true;
+    customInput.value = '';
+  } else if (v) {
+    sel.value = CUSTOM;
+    customInput.hidden = false;
+    customInput.value = v;
+  } else {
+    sel.value = fallback;
+    customInput.hidden = true;
+    customInput.value = '';
+  }
+}
+
+/** Push a gap record into every composer input (used on open + recipe apply). */
+function fillComposerFields(gap) {
+  const c = gap.composer;
+
+  // camera: custom phrase wins over named id
+  if (c.cameraPhrase && String(c.cameraPhrase).trim()) {
+    els.fCamera.value = CUSTOM;
+    els.fCameraCustom.hidden = false;
+    els.fCameraCustom.value = c.cameraPhrase;
+  } else {
+    els.fCamera.value = CAMERA_MOVES.some((m) => m.id === c.cameraId) ? c.cameraId : CAMERA_MOVES[0].id;
+    els.fCameraCustom.hidden = true;
+    els.fCameraCustom.value = '';
+  }
+
+  els.fSubject.value = c.subject || '';
+  setSelectWithCustom(els.fVerb, els.fVerbCustom, PHYSICAL_VERBS, c.verb || PHYSICAL_VERBS[0], PHYSICAL_VERBS[0]);
+  setSelectWithCustom(els.fConnective, els.fConnectiveCustom, CONNECTIVES, c.connective || 'revealing', 'revealing');
+  els.fDestination.value = c.destination || '';
+
+  els.fAnchor.value = c.anchor || '';
+  setSelectWithCustom(els.fTexture, els.fTextureCustom, ['', ...TEXTURES], c.texture || '', NONE);
+  els.fMotion.value = MOTION_LEVELS.some((m) => m.id === c.motion) ? c.motion : NONE;
+  els.fLightingOn.checked = c.lightingOn !== false;
+  els.fLightingText.value = c.lightingText || LIGHTING_DEFAULT;
+  els.fStyleTail.value = c.styleTail || '';
+
+  els.fVerbosity.value = c.verbosity === 'minimal' ? 'minimal' : 'directed';
+  const bt = Array.isArray(c.beatsTexts) ? c.beatsTexts : ['', '', ''];
+  els.fBeat0.value = String(bt[0] || '');
+  els.fBeat1.value = String(bt[1] || '');
+  els.fBeat2.value = String(bt[2] || '');
+
+  els.fNegative.value = gap.negative ?? NEGATIVE_DEFAULT;
+  els.fCfg.value = String(Number.isFinite(Number(gap.cfg)) ? Number(gap.cfg) : DEFAULT_CFG);
+  els.fEnhance.checked = !!gap.enhance;
+  const hasCond = gap.conditioning !== null && Number.isFinite(Number(gap.conditioning));
+  els.fCondOn.checked = hasCond;
+  els.fCond.value = String(hasCond ? Number(gap.conditioning) : 0.5);
+
+  els.fRaw.value = gap.rawText || '';
+  els.rawWrap.hidden = !gap.rawMode;
+  els.btnAdvanced.textContent = gap.rawMode ? '[ ADVANCED: ON ]' : '[ ADVANCED: OFF ]';
+}
+
+function updateFrameCaptions() {
+  const gap = state.gaps[composingKey];
+  if (!gap) return;
+  const fi = slideIndexByUid(gap.fromUid);
+  const ti = slideIndexByUid(gap.toUid);
+  const from = state.slides[fi];
+  const to = state.slides[ti];
+  if (!from || !to) return;
+  const reg = registryEntry(state.settings.videoModel);
+  const morph = !reg || morphCapable(reg);
+  els.composerLeftCap.textContent = `SLIDE ${fi + 1}${from.title ? ' · ' + from.title : ''} (first frame)`;
+  els.composerRightCap.textContent = `SLIDE ${ti + 1}${to.title ? ' · ' + to.title : ''} ` +
+    (morph ? '(last frame)' : '(NOT SENT — animate-only model; playback crossfades here)');
 }
 
 function openComposer(k) {
@@ -688,30 +1028,14 @@ function openComposer(k) {
 
   els.composerTitle.textContent = `COMPOSER — MORPH ${fi + 1} → ${ti + 1}`;
   els.composerLeft.src = imageUrls.get(from.uid) || '';
-  els.composerLeftCap.textContent = `SLIDE ${fi + 1}${from.title ? ' · ' + from.title : ''} (first frame)`;
   els.composerRight.src = imageUrls.get(to.uid) || '';
-  els.composerRightCap.textContent = `SLIDE ${ti + 1}${to.title ? ' · ' + to.title : ''} (last frame)`;
+  updateFrameCaptions();
 
-  els.fSubject.value = gap.composer.subject || '';
-  const verb = gap.composer.verb || PHYSICAL_VERBS[0];
-  if (PHYSICAL_VERBS.includes(verb)) {
-    els.fVerb.value = verb;
-    els.fVerbCustom.hidden = true;
-    els.fVerbCustom.value = '';
-  } else {
-    els.fVerb.value = CUSTOM_VERB;
-    els.fVerbCustom.hidden = false;
-    els.fVerbCustom.value = verb;
-  }
-  els.fConnective.value = CONNECTIVES.includes(gap.composer.connective) ? gap.composer.connective : 'revealing';
-  els.fDestination.value = gap.composer.destination || '';
-  els.fCamera.value = CAMERA_MOVES.some((m) => m.id === gap.composer.cameraId) ? gap.composer.cameraId : CAMERA_MOVES[0].id;
-
-  els.fRaw.value = gap.rawText || '';
-  els.rawWrap.hidden = !gap.rawMode;
-  els.btnAdvanced.textContent = gap.rawMode ? '[ ADVANCED: ON ]' : '[ ADVANCED: OFF ]';
+  fillComposerFields(gap);
+  renderPassthroughUI();
 
   els.composer.hidden = false;
+  kickFramePairLint(k);
   updateComposerPreview();
   renderFilmstrip(); // highlight the selected gap
   els.composer.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
@@ -726,39 +1050,156 @@ function closeComposer() {
 }
 
 function effectiveVerb() {
-  return els.fVerb.value === CUSTOM_VERB
+  return els.fVerb.value === CUSTOM
     ? (els.fVerbCustom.value.trim() || PHYSICAL_VERBS[0])
     : els.fVerb.value;
 }
 
-/** Read fields -> gap record -> preview + lint + button state. */
+function effectiveConnective() {
+  return els.fConnective.value === CUSTOM
+    ? (els.fConnectiveCustom.value.trim() || 'revealing')
+    : els.fConnective.value;
+}
+
+function effectiveTexture() {
+  return els.fTexture.value === CUSTOM
+    ? els.fTextureCustom.value.trim()
+    : els.fTexture.value;
+}
+
+// ------------------------------------------------------------------
+// composer preview + lint + "sent to model"
+// ------------------------------------------------------------------
+
+/** Provider passthrough object for a gap under a registry entry (or undefined). */
+function buildProvider(gap, reg) {
+  const pt = (reg && reg.passthrough) || PASS_NONE;
+  const p = {};
+  if (pt.negative && String(gap.negative || '').trim()) p[pt.negative] = String(gap.negative).trim();
+  if (pt.cfg && Number.isFinite(Number(gap.cfg))) p[pt.cfg] = Number(gap.cfg);
+  if (pt.enhance && gap.enhance) p[pt.enhance] = true;
+  if (pt.conditioning && gap.conditioning !== null && Number.isFinite(Number(gap.conditioning))) {
+    p[pt.conditioning] = Number(gap.conditioning);
+  }
+  return Object.keys(p).length > 0 ? p : undefined;
+}
+
+/** Dim one-liner: which knobs THIS model actually receives. */
+function sentSummary(gap, reg) {
+  if (!reg) return '';
+  const bits = ['prompt'];
+  const provider = buildProvider(gap, reg);
+  if (provider) bits.push(...Object.keys(provider));
+  let s = `SENT TO MODEL: ${bits.join(' + ')}`;
+  s += reg.omitSeed ? ', seed omitted' : ', seed pinned';
+  if (!morphCapable(reg)) s += ', last_frame omitted (animate-only)';
+  if (reg.passthrough && !reg.passthrough.negative && String(gap.negative || '').trim()) {
+    s += ' — negative prompt not accepted, dropped';
+  }
+  return s;
+}
+
+/** Show/hide the fine-control knobs the current model actually accepts. */
+function renderPassthroughUI() {
+  const reg = registryEntry(state.settings.videoModel);
+  const pt = (reg && reg.passthrough) || PASS_NONE;
+  els.negWrap.hidden = !pt.negative;
+  els.negNote.hidden = !!pt.negative;
+  els.cfgWrap.hidden = !pt.cfg;
+  els.veoWrap.hidden = !(pt.enhance || pt.conditioning);
+}
+
+function addLint(text, kind) {
+  const d = document.createElement('div');
+  d.className = `lint lint-${kind}`;
+  d.textContent = text;
+  els.lintBox.appendChild(d);
+}
+
+/** Read fields -> gap record -> preview + sent-line + lint + button state. */
 function updateComposerPreview() {
   const gap = state.gaps[composingKey];
   if (!gap) return;
+  const c = gap.composer;
 
-  els.fVerbCustom.hidden = els.fVerb.value !== CUSTOM_VERB;
+  // custom-input visibility follows the selects
+  els.fVerbCustom.hidden = els.fVerb.value !== CUSTOM;
+  els.fConnectiveCustom.hidden = els.fConnective.value !== CUSTOM;
+  els.fCameraCustom.hidden = els.fCamera.value !== CUSTOM;
+  els.fTextureCustom.hidden = els.fTexture.value !== CUSTOM;
 
-  gap.composer.subject = els.fSubject.value;
-  gap.composer.verb = effectiveVerb();
-  gap.composer.connective = els.fConnective.value;
-  gap.composer.destination = els.fDestination.value;
-  gap.composer.cameraId = els.fCamera.value;
+  // ---- read-back: essentials
+  if (els.fCamera.value === CUSTOM) {
+    c.cameraPhrase = els.fCameraCustom.value;
+  } else {
+    c.cameraId = els.fCamera.value;
+    c.cameraPhrase = '';
+  }
+  c.subject = els.fSubject.value;
+  c.verb = effectiveVerb();
+  c.connective = effectiveConnective();
+  c.destination = els.fDestination.value;
+
+  // ---- read-back: direction
+  c.anchor = els.fAnchor.value;
+  c.texture = effectiveTexture();
+  c.motion = els.fMotion.value;
+  c.lightingOn = els.fLightingOn.checked;
+  c.lightingText = els.fLightingText.value;
+  c.styleTail = els.fStyleTail.value;
+
+  // ---- read-back: fine control
+  c.verbosity = els.fVerbosity.value === 'minimal' ? 'minimal' : 'directed';
+  c.beatsTexts = [els.fBeat0.value, els.fBeat1.value, els.fBeat2.value];
+  gap.negative = els.fNegative.value;
+  gap.cfg = Number(els.fCfg.value) || DEFAULT_CFG;
+  gap.enhance = els.fEnhance.checked;
+  gap.conditioning = els.fCondOn.checked ? Number(els.fCond.value) : null;
   gap.rawText = els.fRaw.value;
 
-  const move = CAMERA_MOVES.find((m) => m.id === gap.composer.cameraId) || CAMERA_MOVES[0];
-  els.cameraHint.textContent = move.hint;
+  // slider readouts
+  els.cfgVal.textContent = String(gap.cfg);
+  els.fCond.disabled = !els.fCondOn.checked;
+  els.condVal.textContent = els.fCondOn.checked ? Number(els.fCond.value).toFixed(2) : '—';
+  els.fLightingText.disabled = !c.lightingOn;
+
+  // camera hint
+  if (els.fCamera.value === CUSTOM) {
+    els.cameraHint.textContent = 'your phrase is emitted verbatim, camera-first';
+  } else {
+    const move = CAMERA_MOVES.find((m) => m.id === c.cameraId) || CAMERA_MOVES[0];
+    els.cameraHint.textContent = move.hint;
+  }
+
+  // beat timestamps auto-portion from the CURRENT duration (25% / 50% / 25%)
+  const w = beatWindows(state.settings.duration);
+  els.beatStamp0.textContent = beatStampText(w[0][0], w[0][1]);
+  els.beatStamp1.textContent = beatStampText(w[1][0], w[1][1]);
+  els.beatStamp2.textContent = beatStampText(w[2][0], w[2][1]);
+
+  // minimal mode dims the essentials text fields (contract + camera + anchor only)
+  const minimal = !gap.rawMode && c.verbosity === 'minimal';
+  els.essMinimalNote.hidden = !minimal;
+  els.minimalNote.hidden = c.verbosity !== 'minimal';
+  for (const fld of [els.fldSubject, els.fldVerb, els.fldConnective, els.fldDestination]) {
+    fld.classList.toggle('dimmed', minimal);
+  }
+  els.fSubject.disabled = minimal;
+  els.fVerb.disabled = minimal;
+  els.fVerbCustom.disabled = minimal;
+  els.fConnectiveCustom.disabled = minimal;
+  els.fDestination.disabled = minimal;
 
   // "...into" verbs take the destination directly — the grammar skips the
   // connective, so reflect that boundary in the UI instead of surprising.
-  const skipsConnective = /\binto$/.test(gap.composer.verb);
-  els.fConnective.disabled = skipsConnective && !gap.rawMode;
+  const skipsConnective = /\binto$/.test(c.verb);
+  els.fConnective.disabled = minimal || (skipsConnective && !gap.rawMode);
   els.fConnective.title = skipsConnective
     ? 'verbs ending in "into" flow straight into the destination — no connective needed'
     : '';
 
-  const full = gap.rawMode
-    ? wrapRawPrompt(gap.rawText)
-    : assemblePrompt(gap.composer);
+  // ---- assembled preview (contract dimmed around the body)
+  const full = assembleGapPrompt(gap);
   const body = full.slice(CONTRACT_PREFIX.length, full.length - CONTRACT_SUFFIX.length);
 
   els.promptPreview.textContent = '';
@@ -773,24 +1214,46 @@ function updateComposerPreview() {
   suf.textContent = CONTRACT_SUFFIX;
   els.promptPreview.append(pre, mid, suf);
 
+  // ---- "sent to model" line
+  const reg = registryEntry(state.settings.videoModel);
+  els.sentLine.textContent = sentSummary(gap, reg);
+
+  // ---- lint row: vocabulary + dominant action + frame pair
+  els.lintBox.textContent = '';
   const lintSource = gap.rawMode
     ? gap.rawText
-    : `${gap.composer.subject} ${gap.composer.verb} ${gap.composer.destination}`;
-  const warnings = lintPrompt(lintSource);
-  els.lintBox.textContent = '';
-  for (const w of warnings) {
-    const d = document.createElement('div');
-    d.className = 'lint';
-    d.textContent = `⚠ '${w.term}' reads as a canned effect to video models — ${w.suggest}`;
-    els.lintBox.appendChild(d);
+    : [c.subject, c.verb, c.destination, c.texture, c.anchor, c.styleTail].join(' ');
+  for (const wng of lintPrompt(lintSource)) {
+    addLint(
+      `⚠ [${wng.kind}] '${wng.term}' reads as a canned effect to video models — ${wng.suggest}`,
+      wng.kind,
+    );
+  }
+  if (!gap.rawMode && !minimal) {
+    for (const stem of lintDominantAction(c)) {
+      addLint(
+        `⚠ [one action] '${stem}…' hiding in subject/destination competes with the main verb — keep those fields nouns (one dominant action per morph)`,
+        'action',
+      );
+    }
+  }
+  const fp = framePairCache.get(composingKey);
+  if (fp && typeof fp.then !== 'function' && Array.isArray(fp.warnings)) {
+    for (const wtext of fp.warnings) addLint(`⚠ [frame pair] ${wtext}`, 'frame');
   }
 
   updateGenerateButton(gap);
   scheduleSave();
 }
 
+/** Cost estimate label — handles unknown-price (unverified) models. */
+function estLabel(modelId, duration) {
+  const c = estimateCost(modelId, duration);
+  return c === null ? 'price unknown' : fmtUsd(c);
+}
+
 function updateGenerateButton(gap) {
-  const est = fmtUsd(estimateCost(state.settings.videoModel, state.settings.duration));
+  const est = estLabel(state.settings.videoModel, state.settings.duration);
   if (gap.status === 'generating') {
     els.btnGenerate.disabled = true;
     els.btnGenerate.textContent = '[ GENERATING… ]';
@@ -818,11 +1281,49 @@ function toggleAdvanced() {
   els.btnAdvanced.textContent = gap.rawMode ? '[ ADVANCED: ON ]' : '[ ADVANCED: OFF ]';
   if (gap.rawMode && !gap.rawText.trim()) {
     // Seed raw mode with the current assembled body so intent carries over.
-    const full = assemblePrompt(gap.composer);
+    const full = assemblePrompt(composerToGrammar(gap));
     els.fRaw.value = full.slice(CONTRACT_PREFIX.length, full.length - CONTRACT_SUFFIX.length);
     gap.rawText = els.fRaw.value;
   }
   updateComposerPreview();
+}
+
+// ------------------------------------------------------------------
+// frame-pair lint (canvas-samples both normalized frames)
+// ------------------------------------------------------------------
+
+async function computeFramePair(fromUid, toUid) {
+  const imgData = async (u) => {
+    const rec = await db.getImage(u);
+    if (!rec || !rec.normalized) throw new Error('normalized frame missing');
+    const bmp = await createImageBitmap(rec.normalized);
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = LINT_W;
+      cv.height = LINT_H;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(bmp, 0, 0, LINT_W, LINT_H);
+      return ctx.getImageData(0, 0, LINT_W, LINT_H);
+    } finally {
+      bmp.close();
+    }
+  };
+  const [a, b] = await Promise.all([imgData(fromUid), imgData(toUid)]);
+  return lintFramePair(a, b);
+}
+
+/** Compute (once) and cache the frame-pair lint for a gap; re-render on done. */
+function kickFramePairLint(k) {
+  if (framePairCache.has(k)) return;
+  const gap = state.gaps[k];
+  if (!gap) return;
+  const p = computeFramePair(gap.fromUid, gap.toUid)
+    .then((res) => {
+      framePairCache.set(k, res);
+      if (composingKey === k) updateComposerPreview();
+    })
+    .catch(() => { framePairCache.delete(k); });
+  framePairCache.set(k, p);
 }
 
 // ------------------------------------------------------------------
@@ -832,26 +1333,54 @@ function toggleAdvanced() {
 const modelInfo = new Map(); // id -> { available: bool|null, durations: number[] }
 
 function registryEntry(id) {
-  return MODEL_REGISTRY.find((m) => m.id === id) || null;
+  return MODEL_REGISTRY.find((m) => m.id === id)
+    || dynamicModels.find((m) => m.id === id)
+    || null;
+}
+
+/** Can this model lock BOTH frames (true morph)? */
+function morphCapable(reg) {
+  if (!reg) return true; // unknown — assume the v1 default behavior
+  if (reg.tier === 'morph') return true;
+  if (reg.tier === 'unverified') return !!reg.morphCapable;
+  return false;
 }
 
 function estimateCost(modelId, duration) {
   const reg = registryEntry(modelId || state.settings.videoModel);
-  if (!reg) return null;
+  if (!reg || typeof reg.pricePerSec !== 'number' || !Number.isFinite(reg.pricePerSec)) return null;
   const d = Number(duration || state.settings.duration) || DEFAULT_DURATION;
   return reg.pricePerSec * Math.max(d, reg.billFloorSec || 0);
 }
 
+function modelOptionText(m) {
+  const info = modelInfo.get(m.id);
+  const avail = info ? info.available : null;
+  let text = `${m.label} — ${estLabel(m.id, state.settings.duration)}${estimateCost(m.id, state.settings.duration) === null ? '' : '/clip'}`;
+  if (m.disabledReason) text += ` — ${m.disabledReason}`;
+  else if (avail === false) text += ' — UNAVAILABLE';
+  return text;
+}
+
 function renderModelSelect() {
   els.modelSelect.textContent = '';
-  for (const m of MODEL_REGISTRY) {
-    const info = modelInfo.get(m.id);
-    const o = document.createElement('option');
-    o.value = m.id;
-    const avail = info ? info.available : null;
-    o.textContent = `${m.label} — ${fmtUsd(estimateCost(m.id, state.settings.duration))}/clip${avail === false ? ' — UNAVAILABLE' : ''}`;
-    o.disabled = avail === false;
-    els.modelSelect.appendChild(o);
+  for (const group of TIER_GROUPS) {
+    const entries = group.tier === 'unverified'
+      ? dynamicModels
+      : MODEL_REGISTRY.filter((m) => m.tier === group.tier);
+    if (entries.length === 0) continue;
+    const og = document.createElement('optgroup');
+    og.label = group.label;
+    for (const m of entries) {
+      const info = modelInfo.get(m.id);
+      const avail = info ? info.available : null;
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = modelOptionText(m);
+      o.disabled = !!m.disabledReason || avail === false || m.tier === 'unusable';
+      og.appendChild(o);
+    }
+    els.modelSelect.appendChild(og);
   }
   els.modelSelect.value = state.settings.videoModel;
   if (els.modelSelect.value !== state.settings.videoModel) {
@@ -869,18 +1398,26 @@ function renderModelSelect() {
   renderDurationSelect();
 }
 
+const TIER_TAG = {
+  morph: 'MORPH', firstframe: 'ANIMATE-ONLY', unverified: 'UNVERIFIED', unusable: 'UNUSABLE',
+};
+
 function renderModelNote() {
   const reg = registryEntry(state.settings.videoModel);
   const info = modelInfo.get(state.settings.videoModel);
   const verify = info ? (info.available ? 'verified' : 'UNAVAILABLE') : 'unverified';
-  els.modelNote.textContent = reg ? `${reg.note} · ${verify}` : '';
+  els.modelNote.textContent = reg
+    ? `${TIER_TAG[reg.tier] || reg.tier} · ${reg.note} · ${verify}`
+    : '';
 }
 
 function renderDurationSelect() {
+  const reg = registryEntry(state.settings.videoModel);
   const info = modelInfo.get(state.settings.videoModel);
-  const durations = (info && Array.isArray(info.durations) && info.durations.length)
+  const durations = ((info && Array.isArray(info.durations) && info.durations.length)
     ? info.durations
-    : FALLBACK_DURATIONS;
+    : ((reg && Array.isArray(reg.durations) && reg.durations.length) ? reg.durations : FALLBACK_DURATIONS))
+    .slice().sort((a, b) => a - b);
   els.durationSelect.textContent = '';
   for (const d of durations) {
     const o = document.createElement('option');
@@ -895,28 +1432,83 @@ function renderDurationSelect() {
   state.settings.duration = want;
 }
 
+/**
+ * Merge the static knowledge table with the live catalog:
+ * availability + durations for known models; UNVERIFIED entries for new ones
+ * (enabled only when they accept a first_frame image; passthrough + seed
+ * behavior derived from the catalog descriptor).
+ */
 async function verifyModels() {
   let models;
   try {
     models = await client.listVideoModels();
   } catch (err) {
-    showNote(`model registry: could not verify against /videos/models (${err.message}) — using hardcoded list`);
+    showNote(`model registry: could not verify against /videos/models (${err.message}) — using the static knowledge table`);
     return;
   }
   const byId = new Map(models.map((m) => [m.id, m]));
   for (const reg of MODEL_REGISTRY) {
     const m = byId.get(reg.id);
     const frames = (m && Array.isArray(m.supported_frame_images)) ? m.supported_frame_images : [];
-    const available = !!m && frames.includes('first_frame') && frames.includes('last_frame');
+    let available = !!m && frames.includes('first_frame');
+    if (reg.tier === 'morph') available = available && frames.includes('last_frame');
+    if (reg.tier === 'unusable' || reg.disabledReason) available = false;
     const durations = (m && Array.isArray(m.supported_durations))
       ? m.supported_durations.map(Number).filter((n) => Number.isFinite(n) && n > 0)
       : [];
-    modelInfo.set(reg.id, { available, durations: durations.length ? durations : FALLBACK_DURATIONS });
+    modelInfo.set(reg.id, {
+      available,
+      durations: durations.length ? durations : (reg.durations || FALLBACK_DURATIONS),
+    });
   }
+
+  // catalog models we have no knowledge-table entry for -> UNVERIFIED tier
+  const known = new Set(MODEL_REGISTRY.map((m) => m.id));
+  dynamicModels = [];
+  for (const m of models) {
+    if (known.has(m.id)) continue;
+    const frames = Array.isArray(m.supported_frame_images) ? m.supported_frame_images : [];
+    const pass = Array.isArray(m.allowed_passthrough_parameters) ? m.allowed_passthrough_parameters : [];
+    const entry = {
+      id: m.id,
+      label: String(m.id).toUpperCase(),
+      tier: 'unverified',
+      pricePerSec: null,
+      billFloorSec: 0,
+      passthrough: {
+        negative: pass.includes('negative_prompt') ? 'negative_prompt'
+          : (pass.includes('negativePrompt') ? 'negativePrompt' : null),
+        cfg: pass.includes('cfg_scale') ? 'cfg_scale' : null,
+        enhance: pass.includes('enhancePrompt') ? 'enhancePrompt' : null,
+        conditioning: pass.includes('conditioningScale') ? 'conditioningScale' : null,
+      },
+      omitSeed: m.seed === false,
+      morphCapable: frames.includes('last_frame'),
+      disabledReason: frames.includes('first_frame') ? null : 'no first-frame image input',
+      note: 'UNVERIFIED — new catalog model; price unknown, check usage.cost after generating',
+    };
+    const durations = Array.isArray(m.supported_durations)
+      ? m.supported_durations.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+      : [];
+    modelInfo.set(entry.id, {
+      available: !entry.disabledReason,
+      durations: durations.length ? durations : FALLBACK_DURATIONS,
+    });
+    dynamicModels.push(entry);
+  }
+
   renderModelSelect();
-  const unavailable = MODEL_REGISTRY.filter((m) => modelInfo.get(m.id) && !modelInfo.get(m.id).available);
+  if (composingKey) {
+    renderPassthroughUI();
+    updateFrameCaptions();
+    updateComposerPreview();
+  }
+  const unavailable = MODEL_REGISTRY.filter(
+    (m) => !m.disabledReason && m.tier !== 'unusable'
+      && modelInfo.get(m.id) && !modelInfo.get(m.id).available,
+  );
   if (unavailable.length) {
-    showNote(`model(s) unavailable for first+last frame video: ${unavailable.map((m) => m.id).join(', ')}`);
+    showNote(`model(s) missing from the live catalog or lacking frame support: ${unavailable.map((m) => m.id).join(', ')}`);
   }
 }
 
@@ -942,6 +1534,176 @@ async function refreshCredits() {
     els.creditsVal.textContent = '?';
     showNote(`credits refresh failed — ${err.message}`);
   }
+}
+
+// ------------------------------------------------------------------
+// morph recipes
+// ------------------------------------------------------------------
+
+function allRecipes() {
+  return [...BUILTIN_RECIPES, ...userRecipes];
+}
+
+function selectedRecipe() {
+  return allRecipes().find((r) => r.id === els.recipeSelect.value) || null;
+}
+
+function renderRecipeSelect() {
+  const keep = els.recipeSelect.value;
+  els.recipeSelect.textContent = '';
+  const ogB = document.createElement('optgroup');
+  ogB.label = '— BUILT-IN —';
+  for (const r of BUILTIN_RECIPES) addOption(ogB, r.id, r.name);
+  els.recipeSelect.appendChild(ogB);
+  if (userRecipes.length > 0) {
+    const ogU = document.createElement('optgroup');
+    ogU.label = '— YOURS —';
+    for (const r of userRecipes) addOption(ogU, r.id, r.name);
+    els.recipeSelect.appendChild(ogU);
+  }
+  els.recipeSelect.value = keep && allRecipes().some((r) => r.id === keep)
+    ? keep
+    : BUILTIN_RECIPES[0].id;
+  updateRecipeButtons();
+}
+
+function updateRecipeButtons() {
+  const r = selectedRecipe();
+  els.btnDeleteRecipe.disabled = !r || !!r.builtin;
+  els.btnDeleteRecipe.title = r && r.builtin ? 'built-in recipes are not deletable' : 'delete this recipe';
+}
+
+async function loadRecipes() {
+  try {
+    const recs = await db.listRecipes();
+    userRecipes = (Array.isArray(recs) ? recs : [])
+      .filter((r) => r && typeof r === 'object' && r.id && r.name)
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  } catch {
+    userRecipes = [];
+  }
+  renderRecipeSelect();
+}
+
+/** The full composer-v2 field set of a gap, as a recipe payload. */
+function recipeFieldsFromGap(gap) {
+  return {
+    ...serializeComposer(gap.composer),
+    negative: gap.negative ?? NEGATIVE_DEFAULT,
+    cfg: Number.isFinite(Number(gap.cfg)) ? Number(gap.cfg) : DEFAULT_CFG,
+    enhance: !!gap.enhance,
+    conditioning: Number.isFinite(Number(gap.conditioning)) ? Number(gap.conditioning) : null,
+  };
+}
+
+/** Merge a (possibly partial) recipe field set into a gap. */
+function applyFieldsToGap(gap, fields) {
+  const F = fields || {};
+  const c = gap.composer;
+  const strKeys = ['cameraId', 'cameraPhrase', 'subject', 'verb', 'connective',
+    'destination', 'texture', 'anchor', 'motion', 'lightingText', 'styleTail'];
+  for (const key of strKeys) {
+    if (key in F && typeof F[key] === 'string') c[key] = F[key];
+  }
+  if ('lightingOn' in F) c.lightingOn = !!F.lightingOn;
+  if ('verbosity' in F) c.verbosity = F.verbosity === 'minimal' ? 'minimal' : 'directed';
+  if ('beatsTexts' in F && Array.isArray(F.beatsTexts)) {
+    c.beatsTexts = [0, 1, 2].map((i) => String(F.beatsTexts[i] || ''));
+  }
+  if ('negative' in F && typeof F.negative === 'string') gap.negative = F.negative;
+  if ('cfg' in F && Number.isFinite(Number(F.cfg))) gap.cfg = Number(F.cfg);
+  if ('enhance' in F) gap.enhance = !!F.enhance;
+  if ('conditioning' in F) {
+    gap.conditioning = (F.conditioning === null || !Number.isFinite(Number(F.conditioning)))
+      ? null
+      : Number(F.conditioning);
+  }
+}
+
+async function saveRecipe() {
+  const gap = state.gaps[composingKey];
+  if (!gap) { showErr('open a gap first — a recipe names the current composer field set'); return; }
+  updateComposerPreview(); // flush inputs -> gap before snapshotting
+  const name = (window.prompt('recipe name:') || '').trim();
+  if (!name) return;
+  const record = {
+    id: uid('recipe'),
+    name: name.slice(0, 60),
+    builtin: false,
+    fields: recipeFieldsFromGap(gap),
+    createdAt: Date.now(),
+  };
+  try {
+    await db.putRecipe(record);
+  } catch (err) {
+    showErr(`recipe save failed — ${err.message}`);
+    return;
+  }
+  userRecipes.push(record);
+  renderRecipeSelect();
+  els.recipeSelect.value = record.id;
+  updateRecipeButtons();
+  showNote(`recipe "${record.name}" saved to this browser`);
+}
+
+function applyRecipe() {
+  const gap = state.gaps[composingKey];
+  const r = selectedRecipe();
+  if (!gap || !r) return;
+  applyFieldsToGap(gap, r.fields);
+  fillComposerFields(gap);
+  renderPassthroughUI();
+  updateComposerPreview();
+  showNote(`recipe "${r.name}" applied to this morph`);
+}
+
+function applyRecipeToAllEmpty() {
+  const r = selectedRecipe();
+  if (!r) return;
+  const keys = activePairKeys().filter((k) => {
+    const g = state.gaps[k];
+    return g && g.status === 'empty';
+  });
+  if (keys.length === 0) {
+    showNote('no empty gaps — every morph is already authored or in flight');
+    return;
+  }
+  const per = estimateCost(state.settings.videoModel, state.settings.duration);
+  const total = per === null ? null : per * keys.length;
+  const ok = window.confirm(
+    `Apply "${r.name}" to ${keys.length} empty gap(s)?\n\n` +
+    `Estimated cost IF all are generated: ${total === null ? 'unknown (unverified model)' : fmtUsd(total)}` +
+    ` (${state.settings.videoModel} @ ${state.settings.duration}s each).\n\n` +
+    'Nothing is queued — this only fills composer fields and staged prompts; you still fire each generate.',
+  );
+  if (!ok) return;
+  for (const k of keys) {
+    const gap = state.gaps[k];
+    applyFieldsToGap(gap, r.fields);
+    gap.rawMode = false;
+    gap.prompt = assemblePrompt(composerToGrammar(gap));
+  }
+  if (composingKey && keys.includes(composingKey)) {
+    fillComposerFields(state.gaps[composingKey]);
+    updateComposerPreview();
+  }
+  renderFilmstrip();
+  scheduleSave();
+  showNote(`recipe "${r.name}" staged on ${keys.length} gap(s) — open each and [ GENERATE ] when ready`);
+}
+
+async function deleteRecipe() {
+  const r = selectedRecipe();
+  if (!r || r.builtin) return;
+  try {
+    await db.deleteRecipe(r.id);
+  } catch (err) {
+    showErr(`recipe delete failed — ${err.message}`);
+    return;
+  }
+  userRecipes = userRecipes.filter((x) => x.id !== r.id);
+  renderRecipeSelect();
+  showNote(`recipe "${r.name}" deleted`);
 }
 
 // ------------------------------------------------------------------
@@ -1008,8 +1770,8 @@ async function redownloadClip(k) {
 function onGenerateClick() {
   const gap = state.gaps[composingKey];
   if (!gap) return;
-  const full = gap.rawMode ? wrapRawPrompt(gap.rawText) : assemblePrompt(gap.composer);
-  gap.prompt = full;
+  updateComposerPreview(); // flush inputs -> gap
+  gap.prompt = assembleGapPrompt(gap);
   gap.model = state.settings.videoModel;
   gap.durationSec = state.settings.duration;
   enqueueGap(composingKey);
@@ -1058,16 +1820,33 @@ async function startGeneration(k) {
 
   try {
     if (!client.hasKey) throw new Error('NO API KEY — open [ KEY ] and paste one');
+    const reg = registryEntry(gap.model);
+    const morph = morphCapable(reg);
+    const provider = buildProvider(gap, reg);
+    const omitSeed = !!(reg && reg.omitSeed);
     const [first, last] = await Promise.all([
       frameDataUrl(gap.fromUid),
-      frameDataUrl(gap.toUid),
+      morph ? frameDataUrl(gap.toUid) : Promise.resolve(null),
     ]);
+    // Record EXACTLY what this submit sends (minus the frame binaries) —
+    // powers the "SENT TO MODEL" display and travels in project exports.
+    gap.sent = {
+      model: gap.model,
+      prompt: gap.prompt,
+      duration: gap.durationSec,
+      provider: provider ?? null,
+      omitSeed,
+      includeLastFrame: morph,
+    };
     const job = await client.createVideoJob({
       model: gap.model,
       prompt: gap.prompt,
       duration: gap.durationSec,
       firstFrame: first,
-      lastFrame: last,
+      lastFrame: last || undefined,
+      includeLastFrame: morph,
+      omitSeed,
+      provider,
     });
     if (!job || job.id === undefined || job.id === null) {
       throw new Error('no job id in POST /videos response');
@@ -1416,7 +2195,7 @@ async function exportDeck() {
 }
 
 // ------------------------------------------------------------------
-// export / import: studio-project.json (shared contract — no binaries, NO key)
+// export / import: studio-project.json v2 (shared contract — no binaries, NO key)
 // ------------------------------------------------------------------
 
 function contractStatus(gap) {
@@ -1435,7 +2214,7 @@ function exportPrompt(gap) {
   if (gap.prompt) return gap.prompt;
   if (gap.rawMode && gap.rawText.trim()) return wrapRawPrompt(gap.rawText);
   if ((gap.composer.subject || '').trim() || (gap.composer.destination || '').trim()) {
-    return assemblePrompt(gap.composer);
+    return assemblePrompt(composerToGrammar(gap, gap.durationSec ?? state.settings.duration));
   }
   return '';
 }
@@ -1448,14 +2227,14 @@ function exportProject() {
       fromIndex: i,
       toIndex: i + 1,
       prompt: exportPrompt(gap),
-      composer: {
-        subject: gap ? gap.composer.subject || '' : '',
-        verb: gap ? gap.composer.verb || '' : '',
-        connective: gap ? gap.composer.connective || '' : '',
-        destination: gap ? gap.composer.destination || '' : '',
-        cameraId: gap ? gap.composer.cameraId || '' : '',
-      },
+      composer: gap ? serializeComposer(gap.composer) : serializeComposer(defaultComposer()),
       rawMode: !!(gap && gap.rawMode),
+      rawText: gap ? gap.rawText || '' : '',
+      negative: gap ? (gap.negative ?? NEGATIVE_DEFAULT) : NEGATIVE_DEFAULT,
+      cfg: gap && Number.isFinite(Number(gap.cfg)) ? Number(gap.cfg) : DEFAULT_CFG,
+      enhance: !!(gap && gap.enhance),
+      conditioning: gap && Number.isFinite(Number(gap.conditioning)) ? Number(gap.conditioning) : null,
+      sent: gap && gap.sent ? { ...gap.sent } : null,
       status: contractStatus(gap),
       jobId: gap ? gap.jobId ?? null : null,
       costUsd: gap ? gap.costUsd ?? null : null,
@@ -1463,7 +2242,7 @@ function exportProject() {
     });
   }
   const project = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'slidemaker-studio-project',
     title: state.title,
     createdAt: state.createdAt,
@@ -1477,7 +2256,27 @@ function exportProject() {
     gaps,
   };
   downloadText(JSON.stringify(project, null, 2), 'studio-project.json');
-  showNote('studio-project.json exported — prompts/settings/titles only, no images, no clips, no key.');
+  showNote('studio-project.json exported (schemaVersion 2) — prompts/composer/knobs/settings/titles only, no images, no clips, no key.');
+}
+
+/** Sanitize an imported composer object (v1: 5 fields; v2: full set). */
+function importComposer(raw) {
+  const c = defaultComposer();
+  if (!raw || typeof raw !== 'object') return c;
+  // fields where '' is meaningful
+  for (const key of ['subject', 'destination', 'texture', 'anchor', 'styleTail', 'cameraPhrase']) {
+    if (typeof raw[key] === 'string') c[key] = raw[key];
+  }
+  // fields where '' falls back to the default
+  if (typeof raw.verb === 'string' && raw.verb) c.verb = raw.verb;
+  if (typeof raw.connective === 'string' && raw.connective) c.connective = raw.connective;
+  if (typeof raw.cameraId === 'string' && raw.cameraId) c.cameraId = raw.cameraId;
+  if (typeof raw.lightingText === 'string' && raw.lightingText) c.lightingText = raw.lightingText;
+  if (typeof raw.motion === 'string') c.motion = raw.motion;
+  if ('lightingOn' in raw) c.lightingOn = raw.lightingOn !== false;
+  if (Array.isArray(raw.beatsTexts)) c.beatsTexts = [0, 1, 2].map((i) => String(raw.beatsTexts[i] || ''));
+  if (raw.verbosity === 'minimal') c.verbosity = 'minimal';
+  return c;
 }
 
 async function importProjectFile(file) {
@@ -1492,8 +2291,9 @@ async function importProjectFile(file) {
     showErr(`IMPORT: ${file.name} looks like a deck.json — drag it onto the SlideMaker OS player page instead`);
     return;
   }
-  if (!data || data.kind !== 'slidemaker-studio-project' || data.schemaVersion !== 1) {
-    showErr(`IMPORT: ${file.name} is not a slidemaker-studio-project (schemaVersion 1)`);
+  if (!data || data.kind !== 'slidemaker-studio-project'
+      || (data.schemaVersion !== 1 && data.schemaVersion !== 2)) {
+    showErr(`IMPORT: ${file.name} is not a slidemaker-studio-project (schemaVersion 1 or 2)`);
     return;
   }
   const hasContent = state.slides.length > 0 || Object.values(state.gaps).some((g) => g.hasClip);
@@ -1534,18 +2334,19 @@ async function importProjectFile(file) {
     const to = state.slides[g.toIndex];
     if (!from || !to || g.toIndex !== g.fromIndex + 1) continue;
     const gap = newGap(from.uid, to.uid);
-    if (g.composer && typeof g.composer === 'object') {
-      gap.composer.subject = String(g.composer.subject || '');
-      gap.composer.verb = String(g.composer.verb || '') || gap.composer.verb;
-      gap.composer.connective = String(g.composer.connective || '') || gap.composer.connective;
-      gap.composer.destination = String(g.composer.destination || '');
-      gap.composer.cameraId = String(g.composer.cameraId || '') || gap.composer.cameraId;
-    }
+    gap.composer = importComposer(g.composer);
     gap.rawMode = !!g.rawMode;
     gap.prompt = typeof g.prompt === 'string' ? g.prompt : '';
-    if (gap.rawMode && gap.prompt.startsWith(CONTRACT_PREFIX) && gap.prompt.endsWith(CONTRACT_SUFFIX)) {
+    if (typeof g.rawText === 'string' && g.rawText) {
+      gap.rawText = g.rawText; // v2 files carry the raw body directly
+    } else if (gap.rawMode && gap.prompt.startsWith(CONTRACT_PREFIX) && gap.prompt.endsWith(CONTRACT_SUFFIX)) {
       gap.rawText = gap.prompt.slice(CONTRACT_PREFIX.length, gap.prompt.length - CONTRACT_SUFFIX.length);
     }
+    if (typeof g.negative === 'string') gap.negative = g.negative;
+    if (Number.isFinite(Number(g.cfg))) gap.cfg = Number(g.cfg);
+    gap.enhance = !!g.enhance;
+    gap.conditioning = Number.isFinite(Number(g.conditioning)) ? Number(g.conditioning) : null;
+    if (g.sent && typeof g.sent === 'object') gap.sent = { ...g.sent };
     gap.model = typeof g.model === 'string' ? g.model : null;
     gap.costUsd = Number.isFinite(Number(g.costUsd)) ? Number(g.costUsd) : null;
     if (g.status === 'generating' && g.jobId) {
@@ -1571,7 +2372,7 @@ async function importProjectFile(file) {
   resumeJobs();
 
   const names = state.slides.map((s) => s.sourceName).filter(Boolean);
-  showNote(`project "${state.title}" imported — re-drop ${state.slides.length} image(s) to fill the slots` +
+  showNote(`project "${state.title}" imported (schemaVersion ${data.schemaVersion}) — re-drop ${state.slides.length} image(s) to fill the slots` +
     (names.length ? ` (${names.join(', ')})` : '') +
     (clipsLost ? `; ${clipsLost} previously-done clip(s) are not in project files — regenerate them` : ''));
 }
@@ -1602,10 +2403,10 @@ async function restoreFromDb() {
   }));
   state.gaps = {};
   for (const [k, g] of Object.entries(rec.gaps || {})) {
+    // v1 autosaves lack the v2 fields — newGap() defaults fill every hole.
     const gap = newGap(g.fromUid, g.toUid);
     Object.assign(gap, {
       uid: g.uid || gap.uid,
-      composer: { ...gap.composer, ...(g.composer || {}) },
       rawMode: !!g.rawMode, rawText: g.rawText || '',
       prompt: g.prompt || '',
       status: g.status || 'empty', jobId: g.jobId ?? null,
@@ -1613,6 +2414,13 @@ async function restoreFromDb() {
       costUsd: g.costUsd ?? null, error: g.error ?? null,
       startedAt: g.startedAt ?? null, hasClip: !!g.hasClip,
     });
+    gap.composer = { ...gap.composer, ...(g.composer || {}) };
+    if (!Array.isArray(gap.composer.beatsTexts)) gap.composer.beatsTexts = ['', '', ''];
+    if (typeof g.negative === 'string') gap.negative = g.negative;
+    if (Number.isFinite(Number(g.cfg))) gap.cfg = Number(g.cfg);
+    gap.enhance = !!g.enhance;
+    gap.conditioning = Number.isFinite(Number(g.conditioning)) ? Number(g.conditioning) : null;
+    if (g.sent && typeof g.sent === 'object') gap.sent = { ...g.sent };
     state.gaps[k] = gap;
   }
 
@@ -1644,6 +2452,7 @@ async function restoreFromDb() {
 async function boot() {
   buildComposerStatics();
   renderModelSelect();
+  renderRecipeSelect();
   updateSpendUI();
 
   client.setKey(storedKey());
@@ -1658,6 +2467,7 @@ async function boot() {
 
   verifyModels();   // free, unauthenticated endpoint
   refreshCredits(); // free metadata endpoint (only if a key is on file)
+  loadRecipes();    // local IndexedDB
 }
 
 // ------------------------------------------------------------------
@@ -1668,13 +2478,21 @@ els.modelSelect.addEventListener('change', () => {
   state.settings.videoModel = els.modelSelect.value;
   renderModelNote();
   renderDurationSelect();
-  if (composingKey) updateGenerateButton(state.gaps[composingKey]);
-  renderFilmstrip(); // REGENERATE price tags follow the current model
+  renderPassthroughUI();
+  if (composingKey) {
+    updateFrameCaptions();
+    updateGenerateButton(state.gaps[composingKey]);
+    updateComposerPreview();
+  }
+  renderFilmstrip(); // REGENERATE price tags + animate-only notes follow the model
   scheduleSave();
 });
 els.durationSelect.addEventListener('change', () => {
   state.settings.duration = Number(els.durationSelect.value) || DEFAULT_DURATION;
-  if (composingKey) updateGenerateButton(state.gaps[composingKey]);
+  if (composingKey) {
+    updateGenerateButton(state.gaps[composingKey]);
+    updateComposerPreview(); // beat stamps re-portion to the new duration
+  }
   renderFilmstrip();
   scheduleSave();
 });
@@ -1705,14 +2523,30 @@ els.projectPicker.addEventListener('change', () => {
 });
 
 els.btnCloseComposer.addEventListener('click', closeComposer);
-for (const el of [els.fSubject, els.fVerbCustom, els.fDestination, els.fRaw]) {
+for (const el of [
+  els.fSubject, els.fVerbCustom, els.fConnectiveCustom, els.fDestination,
+  els.fCameraCustom, els.fTextureCustom, els.fAnchor, els.fLightingText,
+  els.fStyleTail, els.fBeat0, els.fBeat1, els.fBeat2, els.fNegative, els.fRaw,
+]) {
   el.addEventListener('input', updateComposerPreview);
 }
-for (const el of [els.fVerb, els.fConnective, els.fCamera]) {
+for (const el of [
+  els.fVerb, els.fConnective, els.fCamera, els.fTexture, els.fMotion,
+  els.fVerbosity, els.fLightingOn, els.fEnhance, els.fCondOn,
+]) {
   el.addEventListener('change', updateComposerPreview);
+}
+for (const el of [els.fCfg, els.fCond]) {
+  el.addEventListener('input', updateComposerPreview);
 }
 els.btnAdvanced.addEventListener('click', toggleAdvanced);
 els.btnGenerate.addEventListener('click', onGenerateClick);
+
+els.recipeSelect.addEventListener('change', updateRecipeButtons);
+els.btnSaveRecipe.addEventListener('click', saveRecipe);
+els.btnApplyRecipe.addEventListener('click', applyRecipe);
+els.btnApplyRecipeAll.addEventListener('click', applyRecipeToAllEmpty);
+els.btnDeleteRecipe.addEventListener('click', deleteRecipe);
 
 els.pvClose.addEventListener('click', closePreview);
 els.pvNext.addEventListener('click', () => pvPlayer && pvPlayer.next());

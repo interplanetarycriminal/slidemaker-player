@@ -139,28 +139,40 @@ export class OpenRouterClient {
   /**
    * POST /videos -> 202 { id, status }.
    * firstFrame / lastFrame are data: URLs of the 1280x720 normalized PNGs.
+   * v2 options:
+   *   includeLastFrame=false  -> first-frame-only models (no morph lock)
+   *   omitSeed=true           -> models whose catalog says seed:false (kling)
+   *   provider                -> provider-specific passthrough object, sent
+   *                              verbatim (e.g. {negative_prompt, cfg_scale}
+   *                              for kling; {negativePrompt, enhancePrompt,
+   *                              conditioningScale} for veo). Omitted if empty.
    */
   async createVideoJob({
     model, prompt, duration,
     firstFrame, lastFrame,
     resolution = '720p', aspectRatio = '16:9', seed = 42,
+    includeLastFrame = true, omitSeed = false, provider = undefined,
   }) {
-    const j = await this.#request('/videos', {
-      method: 'POST',
-      body: {
-        model,
-        prompt,
-        duration,
-        resolution,
-        aspect_ratio: aspectRatio,
-        generate_audio: false,
-        seed,
-        frame_images: [
-          { type: 'image_url', image_url: { url: firstFrame }, frame_type: 'first_frame' },
-          { type: 'image_url', image_url: { url: lastFrame }, frame_type: 'last_frame' },
-        ],
-      },
-    });
+    const frames = [
+      { type: 'image_url', image_url: { url: firstFrame }, frame_type: 'first_frame' },
+    ];
+    if (includeLastFrame && lastFrame) {
+      frames.push({ type: 'image_url', image_url: { url: lastFrame }, frame_type: 'last_frame' });
+    }
+    const body = {
+      model,
+      prompt,
+      duration,
+      resolution,
+      aspect_ratio: aspectRatio,
+      generate_audio: false,
+      frame_images: frames,
+    };
+    if (!omitSeed) body.seed = seed;
+    if (provider && typeof provider === 'object' && Object.keys(provider).length > 0) {
+      body.provider = provider;
+    }
+    const j = await this.#request('/videos', { method: 'POST', body });
     return (j && j.data) ?? j;
   }
 

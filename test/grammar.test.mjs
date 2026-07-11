@@ -1,68 +1,133 @@
-// test/grammar.test.mjs — sanity tests for the FIXED quality-boundary module.
-// Run: node player/test/grammar.test.mjs   (grammar.js is pure ESM — no browser)
-
-import assert from 'node:assert/strict';
+// node test/grammar.test.mjs — pure-function tests for the v2 quality grammar.
 import {
-  PHYSICAL_VERBS, CONNECTIVES, CAMERA_MOVES, MATCH_HINTS, BANNED_TERMS,
-  CONTRACT_PREFIX, CONTRACT_SUFFIX,
-  assemblePrompt, wrapRawPrompt, lintPrompt,
+  assemblePrompt, wrapRawPrompt, lintPrompt, lintDominantAction, lintFramePair,
+  CONTRACT_PREFIX, CONTRACT_SUFFIX, CAMERA_MOVES, MOTION_LEVELS, TEXTURES,
+  NEGATIVE_DEFAULT,
 } from '../js/grammar.js';
 
-// ---- vocabulary tables exist and are non-empty ----
-assert.ok(PHYSICAL_VERBS.length > 0, 'PHYSICAL_VERBS non-empty');
-assert.ok(CONNECTIVES.length > 0, 'CONNECTIVES non-empty');
-assert.ok(CAMERA_MOVES.length > 0 && CAMERA_MOVES.every((m) => m.id && m.label && m.phrase && m.hint),
-  'CAMERA_MOVES entries have id/label/phrase/hint');
-assert.equal(MATCH_HINTS.length, 3, 'three match-coaching chips');
-assert.ok(BANNED_TERMS.every((b) => b.term && b.suggest), 'BANNED_TERMS have term+suggest');
+let failures = 0;
+const assert = (cond, msg) => {
+  if (!cond) { failures++; console.error('FAIL:', msg); }
+};
 
-// ---- assemblePrompt: output shape = PREFIX + "<subject> <verb> <connective> <destination> as <camera phrase>" + SUFFIX ----
-const fields = {
+// --- assemblePrompt v2: camera-first ordering -------------------------------
+const full = assemblePrompt({
+  cameraId: 'dolly-in',
   subject: 'the lit window in the tower',
   verb: 'stretches',
-  connective: 'revealing',
-  destination: 'the sunlit valley of the next scene',
-  cameraId: 'dolly-in',
+  connective: 'unfolding into',
+  destination: 'a river of light',
+  texture: 'unweaving into threads of light',
+  anchor: 'the frame center',
+  motion: 'slow',
+  lighting: 'Consistent lighting and color grade throughout',
+  styleTail: 'warm analog film grain',
+});
+assert(full.startsWith(CONTRACT_PREFIX), 'contract prefix present');
+assert(full.endsWith(CONTRACT_SUFFIX), 'contract suffix present');
+assert(
+  full.indexOf('The camera dollies forward') < full.indexOf('the lit window'),
+  'camera phrase comes FIRST (before subject)',
+);
+assert(full.includes('while the frame center holds fixed'), 'anchor clause emitted');
+assert(full.includes('unweaving into threads of light'), 'texture emitted');
+assert(full.includes('slowly and smoothly, easing in and out'), 'motion phrase emitted');
+assert(full.includes('Consistent lighting and color grade throughout.'), 'lighting clause emitted');
+assert(full.includes('warm analog film grain.'), 'style tail emitted');
+
+// --- optional fields collapse cleanly ---------------------------------------
+const sparse = assemblePrompt({
+  cameraId: 'crane-up', subject: 'the CRT glow', verb: 'blooms',
+  connective: 'revealing', destination: 'a sunlit valley',
+});
+assert(!sparse.includes('while '), 'no anchor clause when anchor empty');
+assert(!sparse.includes('undefined') && !sparse.includes('null'), 'no leaked undefined/null');
+assert(sparse.includes('The camera cranes upward: the CRT glow blooms, revealing a sunlit valley.'),
+  'sparse camera-first sentence shape');
+
+// --- "into" verb rule survives v2 -------------------------------------------
+const into = assemblePrompt({
+  cameraId: 'static', subject: 'the green text', verb: 'dissolves into',
+  connective: 'revealing', destination: 'a swarm of fireflies',
+});
+assert(into.includes('the green text dissolves into a swarm of fireflies'),
+  '"into" verb skips the connective');
+assert(!into.includes('dissolves into revealing'), 'no broken "into + connective" join');
+
+// --- custom camera phrase wins ----------------------------------------------
+const customCam = assemblePrompt({
+  cameraPhrase: 'The camera spirals down through the ceiling fan',
+  subject: 'the popcorn bucket', verb: 'unfurls', connective: 'opening onto',
+  destination: 'the skyline',
+});
+assert(customCam.includes('The camera spirals down through the ceiling fan:'),
+  'custom camera phrase used verbatim, camera-first');
+
+// --- minimal verbosity mode ---------------------------------------------------
+const minimal = assemblePrompt({
+  cameraId: 'dolly-in', anchor: 'the horizon line', verbosity: 'minimal',
+  subject: 'ignored', verb: 'ignored', destination: 'ignored',
+});
+assert(minimal.includes('The camera dollies forward, while the horizon line holds fixed.'),
+  'minimal mode = contract + camera + anchor only');
+assert(!minimal.includes('ignored'), 'minimal mode drops subject/verb/destination');
+
+// --- beats ---------------------------------------------------------------------
+const beats = assemblePrompt({
+  cameraId: 'dolly-in', subject: 's', verb: 'stretches', connective: 'as', destination: 'd',
+  beats: [
+    { start: 0, end: 2, text: 'the glow swells' },
+    { start: 2, end: 6, text: 'the room reassembles' },
+    { start: 6, end: 8, text: 'everything settles' },
+  ],
+});
+assert(beats.includes('Timing: [00:00-00:02] the glow swells. [00:02-00:06] the room reassembles. [00:06-00:08] everything settles.'),
+  'beats emitted as intra-shot timestamp lines');
+
+// --- wrapRawPrompt -----------------------------------------------------------
+const raw = wrapRawPrompt('the CRT static blooms into fireflies as the camera cranes up');
+assert(raw.startsWith(CONTRACT_PREFIX) && raw.endsWith(CONTRACT_SUFFIX), 'raw mode keeps contract');
+
+// --- lint v2: editing + discontinuity + inflections ---------------------------
+const lint1 = lintPrompt('a smooth crossfade wipe to the next scene');
+assert(lint1.some((w) => w.term === 'crossfade') && lint1.some((w) => w.term === 'wipe'),
+  'editing bans fire');
+const lint2 = lintPrompt('suddenly the scene flashes and glitches');
+assert(lint2.some((w) => w.term === 'suddenly' && w.kind === 'discontinuity'), 'discontinuity: suddenly');
+assert(lint2.some((w) => w.term === 'flash'), 'discontinuity: flashes caught by inflection');
+assert(lint2.some((w) => w.term === 'glitch'), 'discontinuity: glitches caught');
+
+// --- lint v2: choreography whitelist ------------------------------------------
+const choreo = lintPrompt('a slow dolly that transitions into a tilt up, then settles into the final view');
+assert(choreo.length === 0, 'camera choreography not flagged (got: ' + choreo.map((w) => w.term).join(',') + ')');
+const stillBanned = lintPrompt('then we transition to the next slide');
+assert(stillBanned.some((w) => w.term === 'transition'), 'bare "transition" still banned');
+
+// --- one-dominant-action lint --------------------------------------------------
+const dom1 = lintDominantAction({ subject: 'the melting clock face', destination: 'a valley' });
+assert(dom1.includes('melt'), 'transform verb in subject flagged');
+const dom2 = lintDominantAction({ subject: 'the clock face', destination: 'a quiet valley' });
+assert(dom2.length === 0, 'noun-only subject/destination clean');
+
+// --- lintFramePair --------------------------------------------------------------
+const mk = (r, g, b) => {
+  const px = 64;
+  const data = new Uint8ClampedArray(px * 4);
+  for (let i = 0; i < px * 4; i += 4) { data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255; }
+  return { data, width: 8, height: 8 };
 };
-const p = assemblePrompt(fields);
-assert.equal(typeof p, 'string');
-assert.ok(p.startsWith(CONTRACT_PREFIX), 'prompt starts with the fixed contract prefix');
-assert.ok(p.endsWith(CONTRACT_SUFFIX), 'prompt ends with the fixed contract suffix');
-const body = p.slice(CONTRACT_PREFIX.length, p.length - CONTRACT_SUFFIX.length);
-assert.equal(
-  body,
-  'the lit window in the tower stretches, revealing the sunlit valley of the next scene, as the camera dollies forward',
-  'assembled body follows the fixed formula',
-);
+const clash = lintFramePair(mk(220, 30, 30), mk(30, 200, 220)); // red vs cyan
+assert(clash.warnings.some((w) => w.includes('palettes differ')), 'palette clash warned');
+const lumaJump = lintFramePair(mk(240, 240, 240), mk(10, 10, 10)); // white vs black
+assert(lumaJump.warnings.some((w) => w.includes('brightness differs')), 'luma jump warned');
+const calm = lintFramePair(mk(40, 180, 90), mk(60, 160, 110)); // two greens
+assert(calm.warnings.length === 0, 'similar palettes clean');
 
-// ---- verbs ending in "into" take the destination directly (no connective) ----
-const into = assemblePrompt({ ...fields, verb: 'dissolves into' });
-const intoBody = into.slice(CONTRACT_PREFIX.length, into.length - CONTRACT_SUFFIX.length);
-assert.equal(
-  intoBody,
-  'the lit window in the tower dissolves into the sunlit valley of the next scene, as the camera dollies forward',
-  '"...into" verbs skip the connective',
-);
+// --- constants sanity -----------------------------------------------------------
+assert(CAMERA_MOVES.length === 10, '10 camera moves');
+assert(MOTION_LEVELS.length === 5, '5 motion levels');
+assert(TEXTURES.length === 8, '8 textures');
+assert(NEGATIVE_DEFAULT.includes('jump cut') && NEGATIVE_DEFAULT.includes('watermark'), 'negative default seeded');
 
-// ---- assemblePrompt: defaults fill every hole (never a malformed prompt) ----
-const d = assemblePrompt({});
-assert.ok(d.startsWith(CONTRACT_PREFIX) && d.endsWith(CONTRACT_SUFFIX));
-assert.ok(d.length > CONTRACT_PREFIX.length + CONTRACT_SUFFIX.length, 'defaulted body is non-empty');
-
-// ---- trailing punctuation is normalized before the suffix ----
-const punct = assemblePrompt({ ...fields, destination: 'the valley.  ' });
-assert.ok(punct.includes('the valley, as the camera'), 'trailing dots/spaces stripped from the destination');
-assert.ok(!punct.includes('..'), 'no double punctuation anywhere');
-
-// ---- wrapRawPrompt wraps the same fixed contract around raw text ----
-const w = wrapRawPrompt('the bone spins into a satellite.');
-assert.equal(w, CONTRACT_PREFIX + 'the bone spins into a satellite' + CONTRACT_SUFFIX);
-
-// ---- lintPrompt catches "crossfade" (and friends), passes clean text ----
-const warns = lintPrompt('a slow CROSSFADE into the next scene');
-assert.ok(warns.some((x) => x.term === 'crossfade'), 'lint catches "crossfade" (case-insensitive)');
-assert.ok(warns.every((x) => typeof x.suggest === 'string' && x.suggest.length > 0), 'warnings carry suggestions');
-assert.ok(lintPrompt('the window stretches into the sunlit valley').length === 0, 'clean text lints clean');
-assert.ok(lintPrompt('jump   cut to black').some((x) => x.term === 'jump cut'), 'multi-word terms match across whitespace');
-
-console.log('grammar.test: all assertions passed');
+if (failures === 0) console.log('grammar.test v2: all assertions passed');
+else { console.error('grammar.test v2: ' + failures + ' FAILURE(S)'); process.exit(1); }

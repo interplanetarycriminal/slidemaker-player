@@ -398,6 +398,98 @@ select option:disabled { color: var(--acc-faint); }
 #composerStatus { min-height: 1.2em; margin: 4px 0 0; }
 #btnGenerate { align-self: flex-start; }
 
+/* ---------------- composer v2: tiers ---------------- */
+
+#tierEssentials { display: flex; flex-direction: column; gap: 12px; }
+#essMinimalNote { margin: 0; }
+
+.ctier {
+  border: 1px dashed var(--acc-faint);
+  border-radius: 2px;
+  padding: 0 10px 4px;
+}
+.ctier summary {
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--acc-dim);
+  padding: 8px 0;
+  user-select: none;
+  list-style-position: inside;
+}
+.ctier summary:hover, .ctier summary:focus-visible { color: var(--acc); outline: none; }
+.ctier[open] { border-style: solid; border-color: var(--acc-dim); }
+.ctier[open] summary { color: var(--acc); border-bottom: 1px dashed var(--acc-faint); margin-bottom: 4px; }
+.ctier .cfield { margin: 10px 0; }
+
+.cfield.dimmed { opacity: 0.35; }
+.cfield.dimmed input, .cfield.dimmed select { pointer-events: none; }
+
+.checkrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--acc);
+  cursor: pointer;
+}
+input[type="checkbox"] { accent-color: var(--acc); }
+
+#anchorChips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+.beatRow {
+  display: grid;
+  grid-template-columns: 82px 96px 1fr;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+.beatLabel { font-size: 10px; letter-spacing: 0.1em; color: var(--acc-dim); }
+.beatStamp { font-size: 10px; color: var(--acc-faint); }
+.beatRow input { font-size: 12px; padding: 4px 6px; }
+
+.sliderRow { display: flex; align-items: center; gap: 10px; }
+input[type="range"] { flex: 1; accent-color: var(--acc); background: transparent; }
+input[type="range"]:disabled { opacity: 0.35; }
+.sliderVal { font-size: 12px; color: var(--acc); min-width: 3em; text-align: right; }
+.exptag {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--acc);
+  border: 1px solid var(--acc-dim);
+  border-radius: 2px;
+  padding: 0 4px;
+}
+
+#fNegative { width: 100%; resize: vertical; font-size: 12px; }
+#negNote { margin: 0; }
+
+#sentLine { margin: 2px 0 0; color: var(--acc-faint); }
+
+/* lint kinds: editing = amber (default), discontinuity = red edge,
+   dominant-action + frame-pair = dashed edge */
+#lintBox .lint.lint-discontinuity { border-left-color: var(--err); }
+#lintBox .lint.lint-action { border-left-style: dashed; }
+#lintBox .lint.lint-frame { border-left-style: double; }
+
+/* recipes row */
+#recipeRow .btnrow { margin: 0; align-items: center; }
+#recipeSelect { max-width: 250px; }
+
+/* model picker optgroups */
+optgroup { background: var(--panel-warm); color: var(--acc-dim); font-style: normal; }
+
+/* first-frame-only (animate-only) gap-card note */
+.gapCard .ffnote {
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--acc);
+  background: rgba(255, 179, 71, 0.08);
+  border-left: 2px solid var(--acc);
+  padding: 3px 6px;
+}
+
 /* ---------------- preview modal ---------------- */
 
 #previewModal {

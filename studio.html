@@ -11,7 +11,7 @@
 
   <!-- ============ HEADER ============ -->
   <header id="topbar">
-    <h1 class="logo">SLIDEMAKER<span class="accent"> STUDIO</span> <span class="ver">v1.0</span></h1>
+    <h1 class="logo">SLIDEMAKER<span class="accent"> STUDIO</span> <span class="ver">v2.0 — PROMPT ENGINE v2</span></h1>
     <p class="tagline">// PER-TRANSITION MORPH AUTHORING — YOU SUPPLY INTENT, NEVER THE RULES</p>
     <a class="backlink" href="index.html">[ &#8592; PLAYER ]</a>
   </header>
@@ -78,42 +78,148 @@
       </figure>
 
       <div id="composerForm">
-        <label class="cfield">
-          <span class="clabel">1 &#183; WHAT TRANSFORMS?</span>
-          <input id="fSubject" type="text" placeholder="the lit window in the tower" spellcheck="false" autocomplete="off">
-        </label>
-
-        <label class="cfield">
-          <span class="clabel">2 &#183; PHYSICAL VERB</span>
-          <select id="fVerb"></select>
-          <input id="fVerbCustom" type="text" placeholder="custom physical verb (e.g. 'wilts into')" spellcheck="false" autocomplete="off" hidden>
-        </label>
-
-        <label class="cfield">
-          <span class="clabel">3 &#183; CONNECTIVE</span>
-          <select id="fConnective"></select>
-        </label>
-
-        <label class="cfield">
-          <span class="clabel">4 &#183; WHERE DOES IT LAND?</span>
-          <input id="fDestination" type="text" placeholder="the sunlit valley of the next scene" spellcheck="false" autocomplete="off">
-        </label>
-
-        <label class="cfield">
-          <span class="clabel">5 &#183; CAMERA MOVE</span>
-          <select id="fCamera"></select>
-          <span id="cameraHint" class="snote"></span>
-        </label>
-
-        <div class="cfield">
-          <span class="clabel">MATCH COACHING</span>
-          <div id="matchChips"></div>
-          <span id="chipHint" class="snote"></span>
+        <div class="cfield" id="recipeRow">
+          <span class="clabel">MORPH RECIPES</span>
+          <div class="btnrow">
+            <select id="recipeSelect"></select>
+            <button id="btnApplyRecipe" class="sbtn small" type="button">[ APPLY ]</button>
+            <button id="btnApplyRecipeAll" class="sbtn small" type="button">[ APPLY TO ALL EMPTY GAPS ]</button>
+            <button id="btnSaveRecipe" class="sbtn small" type="button">[ SAVE RECIPE ]</button>
+            <button id="btnDeleteRecipe" class="sbtn small danger" type="button" disabled>[ DEL ]</button>
+          </div>
         </div>
+
+        <!-- ============ TIER 1: ESSENTIALS (always open) ============ -->
+        <div id="tierEssentials">
+          <label class="cfield">
+            <span class="clabel">1 &#183; CAMERA MOVE (emitted first)</span>
+            <select id="fCamera"></select>
+            <input id="fCameraCustom" type="text" placeholder="custom camera phrase (e.g. 'The camera plunges through the keyhole')" spellcheck="false" autocomplete="off" hidden>
+            <span id="cameraHint" class="snote"></span>
+          </label>
+
+          <label class="cfield" id="fldSubject">
+            <span class="clabel">2 &#183; WHAT TRANSFORMS?</span>
+            <input id="fSubject" type="text" placeholder="the lit window in the tower" spellcheck="false" autocomplete="off">
+          </label>
+
+          <label class="cfield" id="fldVerb">
+            <span class="clabel">3 &#183; PHYSICAL VERB</span>
+            <select id="fVerb"></select>
+            <input id="fVerbCustom" type="text" placeholder="custom physical verb (e.g. 'wilts into')" spellcheck="false" autocomplete="off" hidden>
+          </label>
+
+          <label class="cfield" id="fldConnective">
+            <span class="clabel">4 &#183; CONNECTIVE</span>
+            <select id="fConnective"></select>
+            <input id="fConnectiveCustom" type="text" placeholder="custom connective (e.g. 'spilling into')" spellcheck="false" autocomplete="off" hidden>
+          </label>
+
+          <label class="cfield" id="fldDestination">
+            <span class="clabel">5 &#183; WHERE DOES IT LAND?</span>
+            <input id="fDestination" type="text" placeholder="the sunlit valley of the next scene" spellcheck="false" autocomplete="off">
+          </label>
+
+          <p id="essMinimalNote" class="snote warnnote" hidden>MINIMAL MODE &#8212; trusting the frames: contract + camera + anchor only</p>
+        </div>
+
+        <!-- ============ TIER 2: DIRECTION (collapsed) ============ -->
+        <details id="tierDirection" class="ctier">
+          <summary>DIRECTION &#8212; anchor &#183; texture &#183; motion &#183; lighting &#183; style</summary>
+
+          <div class="cfield">
+            <span class="clabel">ANCHOR &#8212; WHAT HOLDS STEADY?</span>
+            <input id="fAnchor" type="text" placeholder="the frame center" spellcheck="false" autocomplete="off">
+            <div id="anchorChips"></div>
+          </div>
+
+          <label class="cfield">
+            <span class="clabel">MORPH TEXTURE &#8212; HOW THE MATTER BEHAVES</span>
+            <select id="fTexture"></select>
+            <input id="fTextureCustom" type="text" placeholder="custom texture (e.g. 'sublimating into mist')" spellcheck="false" autocomplete="off" hidden>
+          </label>
+
+          <label class="cfield">
+            <span class="clabel">MOTION INTENSITY</span>
+            <select id="fMotion"></select>
+          </label>
+
+          <div class="cfield">
+            <span class="clabel">LIGHTING CONTINUITY</span>
+            <label class="checkrow"><input type="checkbox" id="fLightingOn" checked> <span>lock lighting + color grade</span></label>
+            <input id="fLightingText" type="text" spellcheck="false" autocomplete="off">
+          </div>
+
+          <label class="cfield">
+            <span class="clabel">STYLE TAIL</span>
+            <input id="fStyleTail" type="text" placeholder="warm analog film grain" spellcheck="false" autocomplete="off">
+          </label>
+
+          <div class="cfield">
+            <span class="clabel">MATCH COACHING</span>
+            <div id="matchChips"></div>
+            <span id="chipHint" class="snote"></span>
+          </div>
+        </details>
+
+        <!-- ============ TIER 3: FINE CONTROL (collapsed) ============ -->
+        <details id="tierFine" class="ctier">
+          <summary>FINE CONTROL &#8212; verbosity &#183; beats &#183; negative &#183; model knobs</summary>
+
+          <div class="cfield">
+            <span class="clabel">VERBOSITY</span>
+            <select id="fVerbosity">
+              <option value="directed">directed &#8212; full formula</option>
+              <option value="minimal">minimal &#8212; trust the frames</option>
+            </select>
+            <span id="minimalNote" class="snote" hidden>trusting the frames: contract + camera + anchor only</span>
+          </div>
+
+          <div class="cfield">
+            <span class="clabel">BEATS &#8212; INTRA-SHOT TIMING (all empty = omitted)</span>
+            <div class="beatRow">
+              <span class="beatLabel">ESTABLISH</span><span id="beatStamp0" class="beatStamp"></span>
+              <input id="fBeat0" type="text" placeholder="the glow swells" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="beatRow">
+              <span class="beatLabel">TRANSFORM</span><span id="beatStamp1" class="beatStamp"></span>
+              <input id="fBeat1" type="text" placeholder="the window unweaves into threads of light" spellcheck="false" autocomplete="off">
+            </div>
+            <div class="beatRow">
+              <span class="beatLabel">SETTLE</span><span id="beatStamp2" class="beatStamp"></span>
+              <input id="fBeat2" type="text" placeholder="everything settles into the valley" spellcheck="false" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="cfield" id="negWrap">
+            <span class="clabel">NEGATIVE PROMPT</span>
+            <textarea id="fNegative" rows="3" spellcheck="false"></textarea>
+          </div>
+          <p id="negNote" class="snote" hidden>this model accepts no negative prompt &#8212; omitted</p>
+
+          <div class="cfield" id="cfgWrap" hidden>
+            <span class="clabel">CFG SCALE <span class="exptag">EXPERIMENTAL</span></span>
+            <div class="sliderRow">
+              <input id="fCfg" type="range" min="3" max="12" step="0.5" value="8">
+              <span id="cfgVal" class="sliderVal">8</span>
+            </div>
+          </div>
+
+          <div class="cfield" id="veoWrap" hidden>
+            <span class="clabel">VEO KNOBS</span>
+            <label class="checkrow"><input type="checkbox" id="fEnhance"> <span>enhancePrompt &#8212; the model rewrites your prompt (default OFF)</span></label>
+            <label class="checkrow"><input type="checkbox" id="fCondOn"> <span>set conditioningScale (unset = omitted)</span></label>
+            <div class="sliderRow">
+              <input id="fCond" type="range" min="0" max="1" step="0.05" value="0.5" disabled>
+              <span id="condVal" class="sliderVal">&#8212;</span>
+            </div>
+          </div>
+        </details>
 
         <div class="cfield">
           <span class="clabel">ASSEMBLED PROMPT</span>
           <div id="promptPreview" aria-live="polite"></div>
+          <p id="sentLine" class="snote"></p>
           <div id="lintBox"></div>
         </div>
 

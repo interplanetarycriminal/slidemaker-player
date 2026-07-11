@@ -1,15 +1,19 @@
 // js/studio-db.js — IndexedDB persistence for SlideMaker Studio.
 // Plain ES2022 module. Zero dependencies.
 //
-// db "slidemaker-studio" v1, three stores (all out-of-line keys):
+// db "slidemaker-studio" v2, four stores (all out-of-line keys):
 //   "project" — single autosave record under key "autosave"
 //               (settings / slides meta / gaps — JSON-safe data ONLY, no blobs, no key)
 //   "images"  — { original: Blob, normalized: Blob, sourceName, type } by slide uid
 //   "clips"   — { blob: Blob(mp4), mimeType, savedAt } by gap uid
+//   "recipes" — { id, name, fields, createdAt } by recipe id   (v2 morph recipes)
+//
+// v1 -> v2 migration: onupgradeneeded only ADDS the missing "recipes" store —
+// existing project/images/clips records are untouched.
 
 const DB_NAME = 'slidemaker-studio';
-const DB_VERSION = 1;
-const STORES = ['project', 'images', 'clips'];
+const DB_VERSION = 2;
+const STORES = ['project', 'images', 'clips', 'recipes'];
 const PROJECT_KEY = 'autosave';
 
 let dbPromise = null;
@@ -99,4 +103,18 @@ export function deleteClip(uid) {
 
 export function listClipKeys() {
   return op('clips', 'readonly', (s) => s.getAllKeys());
+}
+
+// ---------------- recipes (by recipe id, record carries its own id) ----------------
+
+export function putRecipe(record) {
+  return op('recipes', 'readwrite', (s) => s.put(record, record.id));
+}
+
+export function listRecipes() {
+  return op('recipes', 'readonly', (s) => s.getAll());
+}
+
+export function deleteRecipe(id) {
+  return op('recipes', 'readwrite', (s) => s.delete(id));
 }
