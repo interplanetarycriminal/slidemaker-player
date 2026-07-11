@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>SlideMaker Studio</title>
+  <link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header id="topbar">
+    <h1 class="logo">SLIDEMAKER<span class="accent"> STUDIO</span> <span class="ver">v1.0</span></h1>
+    <p class="tagline">// PER-TRANSITION MORPH AUTHORING — YOU SUPPLY INTENT, NEVER THE RULES</p>
+    <a class="backlink" href="index.html">[ &#8592; PLAYER ]</a>
+  </header>
+
+  <!-- ============ SETTINGS BAR ============ -->
+  <section id="settingsBar">
+    <div class="sgroup">
+      <label for="modelSelect">MODEL</label>
+      <select id="modelSelect"></select>
+      <span id="modelNote" class="snote"></span>
+    </div>
+    <div class="sgroup">
+      <label for="durationSelect">DURATION</label>
+      <select id="durationSelect"></select>
+    </div>
+    <div class="sgroup">
+      <label for="titleInput">TITLE</label>
+      <input id="titleInput" type="text" value="UNTITLED DECK" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="sgroup meter">
+      <span class="mlabel">SESSION SPEND</span>
+      <span id="spendVal">$0.00</span>
+    </div>
+    <div class="sgroup meter">
+      <span class="mlabel">CREDITS</span>
+      <span id="creditsVal">&#8212;</span>
+    </div>
+    <div class="sgroup grow"></div>
+    <button id="btnKey" class="sbtn" type="button">[ KEY: NONE ]</button>
+    <button id="btnAddImages" class="sbtn" type="button">[ + ADD IMAGES ]</button>
+    <button id="btnExportDeck" class="sbtn" type="button">[ EXPORT DECK.JSON ]</button>
+    <button id="btnExportProject" class="sbtn" type="button">[ EXPORT PROJECT ]</button>
+    <button id="btnImportProject" class="sbtn" type="button">[ IMPORT PROJECT ]</button>
+  </section>
+
+  <!-- ============ BANNERS / STATUS ============ -->
+  <div id="creditBanner" class="banner" role="alert" hidden>
+    OUT OF CREDITS — generation stopped. Top up at openrouter.ai, then [ TEST KEY ] to resume.
+  </div>
+  <p id="noteLine" class="note" aria-live="polite" hidden></p>
+  <p id="errLine" class="err" role="alert" hidden></p>
+
+  <!-- ============ FILMSTRIP ============ -->
+  <section id="stripSection">
+    <p id="detachNote" class="snote warnnote" hidden></p>
+    <div id="stripEmpty">
+      <p>&gt; DROP IMAGES ANYWHERE — or hit [ + ADD IMAGES ]</p>
+      <p class="snote">each image becomes a slide; every gap between slides becomes a morph you author one at a time</p>
+    </div>
+    <div id="filmstrip" hidden></div>
+    <p id="cropHint" class="snote">16:9 cover crop keeps morphs stable; letterboxing causes bar-pumping — every image is normalized to 1280&#215;720 PNG</p>
+  </section>
+
+  <!-- ============ COMPOSER (3-panel) ============ -->
+  <section id="composer" hidden>
+    <div id="composerHead">
+      <h2 id="composerTitle">COMPOSER</h2>
+      <button id="btnCloseComposer" class="sbtn" type="button">[ ESC CLOSE ]</button>
+    </div>
+    <div id="composerCols">
+      <figure class="cpanel">
+        <img id="composerLeft" alt="slide before the transition">
+        <figcaption id="composerLeftCap"></figcaption>
+      </figure>
+
+      <div id="composerForm">
+        <label class="cfield">
+          <span class="clabel">1 &#183; WHAT TRANSFORMS?</span>
+          <input id="fSubject" type="text" placeholder="the lit window in the tower" spellcheck="false" autocomplete="off">
+        </label>
+
+        <label class="cfield">
+          <span class="clabel">2 &#183; PHYSICAL VERB</span>
+          <select id="fVerb"></select>
+          <input id="fVerbCustom" type="text" placeholder="custom physical verb (e.g. 'wilts into')" spellcheck="false" autocomplete="off" hidden>
+        </label>
+
+        <label class="cfield">
+          <span class="clabel">3 &#183; CONNECTIVE</span>
+          <select id="fConnective"></select>
+        </label>
+
+        <label class="cfield">
+          <span class="clabel">4 &#183; WHERE DOES IT LAND?</span>
+          <input id="fDestination" type="text" placeholder="the sunlit valley of the next scene" spellcheck="false" autocomplete="off">
+        </label>
+
+        <label class="cfield">
+          <span class="clabel">5 &#183; CAMERA MOVE</span>
+          <select id="fCamera"></select>
+          <span id="cameraHint" class="snote"></span>
+        </label>
+
+        <div class="cfield">
+          <span class="clabel">MATCH COACHING</span>
+          <div id="matchChips"></div>
+          <span id="chipHint" class="snote"></span>
+        </div>
+
+        <div class="cfield">
+          <span class="clabel">ASSEMBLED PROMPT</span>
+          <div id="promptPreview" aria-live="polite"></div>
+          <div id="lintBox"></div>
+        </div>
+
+        <div class="cfield">
+          <button id="btnAdvanced" class="sbtn small" type="button">[ ADVANCED: OFF ]</button>
+          <div id="rawWrap" hidden>
+            <textarea id="fRaw" rows="4" spellcheck="false"
+              placeholder="raw prompt body — the continuity contract is still wrapped around it"></textarea>
+          </div>
+        </div>
+
+        <div class="cfield">
+          <button id="btnGenerate" class="sbtn go" type="button">[ GENERATE ]</button>
+          <p id="composerStatus" class="snote"></p>
+        </div>
+      </div>
+
+      <figure class="cpanel">
+        <img id="composerRight" alt="slide after the transition">
+        <figcaption id="composerRightCap"></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ============ PREVIEW MODAL (reuses Player) ============ -->
+  <div id="previewModal" hidden>
+    <div id="pvBox">
+      <div id="pvStage">
+        <img id="pvSlide" alt="">
+        <video id="pvVideo" muted playsinline preload="auto"></video>
+        <img id="pvFade" alt="" aria-hidden="true">
+        <div id="pvCrt" aria-hidden="true"></div>
+      </div>
+      <div id="pvControls">
+        <button id="pvBack" class="sbtn small" type="button" title="Back (&#8592;)">&#9664;</button>
+        <button id="pvNext" class="sbtn small" type="button" title="Next (&#8594;)">&#9654;</button>
+        <span id="pvCounter">&#8211; / &#8211;</span>
+        <span class="grow"></span>
+        <span id="pvNote" class="snote">BACK = CROSSFADE — reverse clips are generated by the pipeline (ffmpeg), not Studio</span>
+        <button id="pvClose" class="sbtn small" type="button">[ ESC ]</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ KEY DRAWER (BYOK) ============ -->
+  <div id="drawerScrim" hidden></div>
+  <aside id="keyDrawer" hidden>
+    <h2>OPENROUTER KEY</h2>
+    <p class="warnnote">
+      &#9888; this key lives ONLY in this browser's localStorage
+      ("slidemaker.openrouter.key"). anyone with it can spend your credits.
+      prefer a scoped, disposable key. it is never written into exports,
+      project files, console logs, or error messages.
+    </p>
+    <label class="cfield">
+      <span class="clabel">KEY</span>
+      <input id="keyInput" type="password" placeholder="sk-or-v1-..." spellcheck="false"
+             autocomplete="off" autocapitalize="off">
+    </label>
+    <p id="keyState" class="snote"></p>
+    <div class="btnrow">
+      <button id="btnSaveKey" class="sbtn" type="button">[ SAVE KEY ]</button>
+      <button id="btnTestKey" class="sbtn" type="button">[ TEST KEY ]</button>
+      <button id="btnForgetKey" class="sbtn danger" type="button">[ FORGET KEY ]</button>
+    </div>
+    <pre id="keyReport"></pre>
+    <button id="btnCloseDrawer" class="sbtn" type="button">[ CLOSE ]</button>
+  </aside>
+
+  <!-- ============ DROP OVERLAY ============ -->
+  <div id="dropOverlay" hidden><span>DROP IMAGES</span></div>
+
+  <input id="filePicker" type="file" accept="image/*" multiple hidden>
+  <input id="projectPicker" type="file" accept=".json,application/json" hidden>
+
+  <script type="module" src="js/studio.js"></script>
+</body>
+</html>
