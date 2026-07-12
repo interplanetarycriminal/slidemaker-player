@@ -4,12 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#050805">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SlideMaker">
   <title>SlideMaker Studio</title>
-  <!-- pre-paint: set the saved skin + view mode BEFORE stylesheets paint (no flash) -->
-  <script>try{var t=localStorage.getItem('slidemaker.theme');if(t)document.documentElement.setAttribute('data-theme',t);var m=localStorage.getItem('slidemaker.mode');if(m==='director')document.documentElement.classList.add('director-mode');}catch(e){}</script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon-64.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <!-- pre-paint: set the saved skin + view mode BEFORE stylesheets paint (no flash).
+       ?mode=tablet|director|classic (from the installed PWA start_url) wins + persists. -->
+  <script>try{var t=localStorage.getItem('slidemaker.theme');if(t)document.documentElement.setAttribute('data-theme',t);var qm=new URLSearchParams(location.search).get('mode');var m=(qm==='tablet'||qm==='director'||qm==='classic')?qm:localStorage.getItem('slidemaker.mode');if(qm){try{localStorage.setItem('slidemaker.mode',qm);}catch(e){}}if(m==='director')document.documentElement.classList.add('director-mode');else if(m==='tablet')document.documentElement.classList.add('tablet-mode');}catch(e){}</script>
   <link rel="stylesheet" href="css/studio.css">
   <link rel="stylesheet" href="css/themes.css">
   <link rel="stylesheet" href="css/director.css">
+  <link rel="stylesheet" href="css/tablet.css">
 </head>
 <body>
 
@@ -17,6 +27,8 @@
   <header id="topbar">
     <h1 class="logo">SLIDEMAKER<span class="accent"> STUDIO</span> <span class="ver">v2.0 — PROMPT ENGINE v2</span></h1>
     <p class="tagline">// PER-TRANSITION MORPH AUTHORING — YOU SUPPLY INTENT, NEVER THE RULES</p>
+    <button id="btnTabletToggle" class="sbtn" type="button" aria-pressed="false"
+            title="toggle the touch-first Tablet Mode: draw &rarr; guided clip &rarr; keyframe morph"><span class="tw">&#9638;</span> TABLET</button>
     <button id="btnDirectorToggle" class="sbtn" type="button" aria-pressed="false"
             title="toggle the cinematic Director Mode view over the same engine"><span class="tw">&#10022;</span> NEW DESIGN</button>
     <a class="backlink" href="index.html">[ &#8592; PLAYER ]</a>
@@ -320,6 +332,140 @@
     </div>
   </div>
 
+  <!-- ============ TABLET MODE (touch-first third view; same engine) ============
+       Draw directional strokes on slide N → bake into the image → image-to-video
+       → auto-extract the clip's LAST frame. Draw on slide N+1 → I2V → auto-extract
+       its FIRST frame. The centre then morphs (first/last-frame) between those two
+       extracted frames — sidestepping OpenRouter's broken video-to-video.
+       tablet.js owns this shell; it imports ONLY the StudioController seam. -->
+  <div id="tablet" hidden aria-label="Tablet Mode">
+
+    <!-- REEL RAIL: pick the focused slide pair -->
+    <div id="tabReel" role="list" aria-label="Reel"></div>
+
+    <!-- GLOBAL TOOLS: brush · I2V model · morph model · HUD -->
+    <div id="tabTools">
+      <div class="tabToolGroup" id="tabBrush">
+        <span class="tabToolLabel">BRUSH</span>
+        <div id="tabSwatches" role="radiogroup" aria-label="Brush colour"></div>
+        <div id="tabSizes" role="radiogroup" aria-label="Brush size"></div>
+      </div>
+      <div class="tabToolGroup">
+        <label class="tabToolLabel" for="tabI2VModel">I2V MODEL</label>
+        <select id="tabI2VModel"></select>
+        <select id="tabI2VDur" aria-label="I2V duration"></select>
+        <span id="tabI2VEst" class="snote"></span>
+      </div>
+      <div class="tabToolGroup">
+        <label class="tabToolLabel" for="tabMorphModel">MORPH MODEL</label>
+        <select id="tabMorphModel"></select>
+        <select id="tabMorphDur" aria-label="Morph duration"></select>
+        <span id="tabMorphEst" class="snote"></span>
+      </div>
+      <span class="tabGrow"></span>
+      <div id="tabHud">
+        <span id="tabSpend"></span>
+        <span id="tabCredits"></span>
+      </div>
+    </div>
+
+    <div id="tabCreditBanner" class="banner" role="alert" hidden>
+      OUT OF CREDITS &#8212; generation stopped. Top up at openrouter.ai, then open [ KEY ] &#8594; [ TEST KEY ] to resume.
+    </div>
+
+    <!-- empty deck hint -->
+    <div id="tabEmpty" class="tabEmpty">
+      <span class="big">NO SLIDE PAIR YET</span>
+      <span class="sub">Drop images in Classic or Studio first &#8212; each image becomes a slide, and every gap between two slides becomes a morph you build here.</span>
+    </div>
+
+    <!-- THE STAGE: LEFT draw zone · CENTER morph · RIGHT draw zone -->
+    <div id="tabStage" hidden>
+
+      <!-- LEFT: slide N — draw → I2V → extract LAST frame -->
+      <section class="tabZone" id="tabLeft">
+        <header class="tabZoneHead">
+          <span class="tabZoneTitle">1 &#183; FROM &#8212; SLIDE <span class="tabSlideNo" id="tabLeftNo">&#8211;</span></span>
+          <div class="tabZoneBtns">
+            <button class="sbtn small tabUndo" type="button" data-side="left">[ UNDO ]</button>
+            <button class="sbtn small tabClear" type="button" data-side="left">[ CLEAR ]</button>
+          </div>
+        </header>
+        <div class="tabPaint" id="tabLeftPaint">
+          <img class="tabSlideImg" id="tabLeftImg" alt="slide before the transition">
+          <canvas class="tabCanvas" id="tabLeftCanvas"></canvas>
+          <div class="tabClipWrap" id="tabLeftClip" hidden></div>
+        </div>
+        <label class="tabHint">MOTION HINT
+          <input type="text" id="tabLeftPrompt" spellcheck="false" autocomplete="off"
+                 placeholder="how the drawn strokes should move (optional)">
+        </label>
+        <div class="tabZoneFoot">
+          <button class="sbtn go tabGen" type="button" data-side="left">[ GENERATE LEFT CLIP ]</button>
+          <button class="sbtn small tabReroll" type="button" data-side="left" hidden>[ RE-ROLL ]</button>
+          <span class="tabStatus" id="tabLeftStatus">Draw directional strokes, then generate. The drawing is baked into the image before it goes to the model.</span>
+        </div>
+        <figure class="tabHandoff" id="tabLeftHandoff" hidden>
+          <img alt="extracted last frame of the left clip">
+          <figcaption>&rarr; MORPH START <span class="snote">(last frame)</span></figcaption>
+        </figure>
+      </section>
+
+      <!-- CENTER: morph between the two extracted handoff frames -->
+      <section class="tabZone" id="tabCenter">
+        <header class="tabZoneHead">
+          <span class="tabZoneTitle">2 &#183; MORPH</span>
+        </header>
+        <div class="tabMorphFrames">
+          <figure class="tabMorphFrame"><div class="tabMorphImg blank" id="tabMorphA"></div><figcaption>START</figcaption></figure>
+          <span class="tabMorphArrow">&rarr;</span>
+          <figure class="tabMorphFrame"><div class="tabMorphImg blank" id="tabMorphB"></div><figcaption>END</figcaption></figure>
+        </div>
+        <div class="tabMorphStage" id="tabMorphStage" hidden></div>
+        <label class="tabHint">MORPH INTENT
+          <input type="text" id="tabMorphPrompt" spellcheck="false" autocomplete="off"
+                 placeholder="how the start frame becomes the end frame (optional)">
+        </label>
+        <div class="tabZoneFoot">
+          <button class="sbtn go" id="tabGenMorph" type="button" disabled>[ GENERATE MORPH ]</button>
+          <button class="sbtn small" id="tabRerollMorph" type="button" hidden>[ RE-ROLL ]</button>
+          <span class="tabStatus" id="tabMorphStatus">Generate the two side clips first &#8212; their extracted frames become the morph's first &amp; last.</span>
+        </div>
+      </section>
+
+      <!-- RIGHT: slide N+1 — draw → I2V → extract FIRST frame -->
+      <section class="tabZone" id="tabRight">
+        <header class="tabZoneHead">
+          <span class="tabZoneTitle">3 &#183; TO &#8212; SLIDE <span class="tabSlideNo" id="tabRightNo">&#8211;</span></span>
+          <div class="tabZoneBtns">
+            <button class="sbtn small tabUndo" type="button" data-side="right">[ UNDO ]</button>
+            <button class="sbtn small tabClear" type="button" data-side="right">[ CLEAR ]</button>
+          </div>
+        </header>
+        <div class="tabPaint" id="tabRightPaint">
+          <img class="tabSlideImg" id="tabRightImg" alt="slide after the transition">
+          <canvas class="tabCanvas" id="tabRightCanvas"></canvas>
+          <div class="tabClipWrap" id="tabRightClip" hidden></div>
+        </div>
+        <label class="tabHint">MOTION HINT
+          <input type="text" id="tabRightPrompt" spellcheck="false" autocomplete="off"
+                 placeholder="how the drawn strokes should move (optional)">
+        </label>
+        <div class="tabZoneFoot">
+          <button class="sbtn go tabGen" type="button" data-side="right">[ GENERATE RIGHT CLIP ]</button>
+          <button class="sbtn small tabReroll" type="button" data-side="right" hidden>[ RE-ROLL ]</button>
+          <span class="tabStatus" id="tabRightStatus">Draw directional strokes, then generate. The drawing is baked into the image before it goes to the model.</span>
+        </div>
+        <figure class="tabHandoff" id="tabRightHandoff" hidden>
+          <img alt="extracted first frame of the right clip">
+          <figcaption>MORPH END <span class="snote">(first frame)</span> &rarr;</figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <div id="tabKeys" class="snote">Touch or stylus to draw &#183; pick a pair from the reel &#183; 3 gens per pair &#8776; $0.30&#8211;0.55</div>
+  </div>
+
   <!-- ============ PREVIEW MODAL (reuses Player) ============ -->
   <div id="previewModal" hidden>
     <div id="pvBox">
@@ -377,5 +523,7 @@
   </script>
   <script type="module" src="js/studio.js"></script>
   <script type="module" src="js/director.js"></script>
+  <script type="module" src="js/tablet.js"></script>
+  <script>if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 </body>
 </html>

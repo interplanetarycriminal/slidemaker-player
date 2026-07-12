@@ -96,6 +96,15 @@ function applyMode(next, { persist = true } = {}) {
   document.documentElement.classList.toggle('director-mode', on);
   document.body.classList.toggle('director-mode', on);
 
+  // 3-way coordination (classic | director | tablet — mutually exclusive):
+  // activating Director always clears Tablet and tells the tablet view to
+  // stand down. Tablet does the symmetric thing via the same event.
+  if (on) {
+    document.documentElement.classList.remove('tablet-mode');
+    document.body.classList.remove('tablet-mode');
+    document.dispatchEvent(new CustomEvent('slidemaker:modechange', { detail: 'director' }));
+  }
+
   el.director.hidden = !on;
   relocateComposerInto(on ? 'director' : 'classic');
 
@@ -601,6 +610,13 @@ function wire() {
   });
 
   document.addEventListener('keydown', onKeydown);
+
+  // 3-way coordination: if another view (Tablet) takes over, Director stands
+  // down to classic WITHOUT re-persisting the mode (the other view owns it now).
+  document.addEventListener('slidemaker:modechange', (e) => {
+    if (e.detail !== 'director' && mode === 'director') applyMode('classic', { persist: false });
+  });
+
   onStudioChange(renderAll);
   setInterval(tick, 1000);
 }

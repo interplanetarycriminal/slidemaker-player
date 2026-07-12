@@ -1,0 +1,22 @@
+{
+  "name": "SlideMaker Studio",
+  "short_name": "SlideMaker",
+  "description": "Draw motion on your slides, generate AI morph transitions, and play them back — a touch-first AI slide-morph studio.",
+  "start_url": "studio.html?mode=tablet",
+  "scope": "./",
+  "id": "slidemaker-studio",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050805",
+  "theme_color": "#050805",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Tablet Mode (draw → morph)", "short_name": "Tablet", "url": "studio.html?mode=tablet" },
+    { "name": "Studio (composer)", "short_name": "Studio", "url": "studio.html?mode=classic" },
+    { "name": "Player", "short_name": "Player", "url": "index.html" }
+  ]
+}

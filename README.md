@@ -185,6 +185,37 @@ by a pre-paint `<head>` snippet, so reloads don't flash the classic UI. Director
 Mode is themed entirely by the shared token system — dark skins get glassy
 panels and accent glow; light skins (`paper`, `solarpunk`) render flat.
 
+### Tablet Mode — draw → guided clip → keyframe morph
+
+The topbar also has a **`▦ TABLET`** toggle (next to `✦ NEW DESIGN`) for a
+touch-first third view over the *same engine*. The three modes — `classic`,
+`director`, `tablet` — are mutually exclusive, coordinated through
+`localStorage` (`slidemaker.mode`) + `<html>` classes and applied by the same
+pre-paint `<head>` snippet (no flash). Tablet Mode implements a workflow that
+sidesteps OpenRouter's broken video-to-video by extracting keyframes instead:
+
+1. **LEFT** — draw directional strokes on slide *N* (Pointer + touch, colour
+   swatches, brush sizes, UNDO/CLEAR). **GENERATE LEFT CLIP** bakes the drawing
+   *into* the 1280×720 image, sends it as a single-frame **image-to-video** job,
+   then **auto-extracts that clip's LAST frame** (`→ morph start`).
+2. **RIGHT** — same on slide *N+1* → I2V → **auto-extracts the FIRST frame**
+   (`morph end →`).
+3. **CENTER** — once both handoff frames exist, **GENERATE MORPH** runs a
+   first/last-frame morph between them (`firstFrame` = left handoff, `lastFrame`
+   = right handoff). The finished morph is written back as the pair's transition,
+   so the Player and exports use it.
+
+Frame extraction is client-side and event-gated (`loadeddata`/`seeked`, never
+`play()`, so it works in background tabs). There's a shared **I2V model** select
+(any first-frame-capable model; default `veo-3.1-lite`) and a **morph model**
+select (first+last-frame models only; default `kling-v3.0-pro`), each with a
+duration menu and live cost estimate; `wan-2.7` is honestly marked **⎇ VIDEO-IN**
+(experimental). Per-pair drawings, clips and extracted frames persist in an own
+IndexedDB (`slidemaker-tablet`) and restore on reload. Large ≥44px touch
+targets, a running cost/credits HUD (≈ $0.30–0.55 per pair), and
+`prefers-reduced-motion` are all respected. No forked generation — every job
+goes through the `StudioController` seam (`submitAndAwaitClip` / `setGapClip`).
+
 ## Themes / skins
 
 Both the player and Studio share a **skin system** (zero-dependency, offline).

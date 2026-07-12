@@ -73,8 +73,8 @@ const MODEL_REGISTRY = [
     durations: [5, 10], passthrough: PASS_NEG, omitSeed: true,
     note: 'Kling reasoning tier — 5s/10s only' },
   { id: 'alibaba/wan-2.7', label: 'WAN 2.7', tier: 'morph', pricePerSec: 0.10, billFloorSec: 5,
-    passthrough: PASS_NEG, omitSeed: false,
-    note: 'best prompt adherence in our bake-off (billed 5s min)' },
+    passthrough: PASS_NEG, omitSeed: false, videoInput: true,
+    note: 'best prompt adherence; ONLY model accepting video input (experimental — currently ignores it)' },
   { id: 'google/veo-3.1-lite', label: 'VEO 3.1 LITE', tier: 'morph', pricePerSec: 0.03, billFloorSec: 0,
     durations: [4, 6, 8], passthrough: PASS_VEO, omitSeed: false,
     note: 'draft/value' },
@@ -1359,6 +1359,7 @@ function modelOptionText(m) {
   const info = modelInfo.get(m.id);
   const avail = info ? info.available : null;
   let text = `${m.label} — ${estLabel(m.id, state.settings.duration)}${estimateCost(m.id, state.settings.duration) === null ? '' : '/clip'}`;
+  if (m.videoInput) text += ' ⎇ VIDEO-IN'; // only wan-2.7 accepts video input on OpenRouter
   if (m.disabledReason) text += ` — ${m.disabledReason}`;
   else if (avail === false) text += ' — UNAVAILABLE';
   return text;
@@ -2698,6 +2699,74 @@ export const StudioController = {
   estimateCost,
   /** The composer element the view relocates into its centre column. */
   composerEl: () => els.composer,
+
+  // ---- Tablet Mode primitives (draw → guided clip → keyframe morph) --------
+  /** Registry entry for a model id (incl. dynamic), for the picker/badges. */
+  registry: (id) => registryEntry(id),
+  hasKeyReady: () => client.hasKey,
+  frameDims: () => ({ w: FRAME_W, h: FRAME_H }),
+
+  /**
+   * Submit ONE video job and await its clip — the generic primitive Tablet
+   * Mode uses for its three generations (left I2V, right I2V, keyframe morph).
+   * I2V = pass only firstFrame (includeLastFrame:false). Morph = pass both.
+   * Reuses the shared client (key, retry, scrubbing) + updates session spend.
+   * @returns {Promise<{blob:Blob, costUsd:number, jobId:string}>}
+   */
+  async submitAndAwaitClip({ model, duration, firstFrame, lastFrame, includeLastFrame = true, prompt = '', provider, onStatus }) {
+    if (!client.hasKey) throw new Error('NO API KEY — open [ KEY ] and paste one');
+    const reg = registryEntry(model);
+    const job = await client.createVideoJob({
+      model, prompt, duration,
+      firstFrame, lastFrame: lastFrame || undefined,
+      includeLastFrame, omitSeed: !!(reg && reg.omitSeed), provider,
+    });
+    if (!job || job.id == null) throw new Error('no job id in POST /videos response');
+    const jobId = String(job.id);
+    const started = Date.now();
+    for (;;) {
+      if (Date.now() - started > POLL_TIMEOUT_MS) throw new Error(`morph job ${jobId} timed out (12 min)`);
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      let r;
+      try { r = await client.getVideoJob(jobId); }
+      catch (err) { if (err instanceof OutOfCreditsError) { onOutOfCredits(); throw err; } if (onStatus) onStatus('poll-retry'); continue; }
+      const st = String(r.status || '').toLowerCase();
+      if (onStatus) onStatus(st);
+      if (st === 'completed') {
+        const blob = await client.downloadVideoContent(jobId);
+        const cost = Number(r.usage && r.usage.cost);
+        if (Number.isFinite(cost)) { sessionSpend += cost; updateSpendUI(); refreshCredits(); }
+        return { blob, costUsd: Number.isFinite(cost) ? cost : 0, jobId };
+      }
+      if (st === 'failed' || st === 'cancelled' || st === 'expired') {
+        const d = r.error && (r.error.message || r.error);
+        throw new Error(`job ${st}${d ? ': ' + client.scrubText(String(d)).slice(0, 200) : ''}`);
+      }
+    }
+  },
+
+  /**
+   * Write a finished clip into the gap for a pair so it becomes the played
+   * transition (Tablet Mode hands its morph here). Persists + refreshes views.
+   */
+  async setGapClip(key, blob, meta = {}) {
+    deriveGaps();
+    let gap = state.gaps[key];
+    if (!gap) { const [f, t] = key.split('::'); gap = state.gaps[key] = newGap(f, t); }
+    await db.putClip(gap.uid, { blob, mimeType: 'video/mp4', savedAt: Date.now() });
+    setClipUrl(gap.uid, blob);
+    gap.status = 'done';
+    gap.hasClip = true;
+    gap.error = null;
+    if (meta.model) gap.model = meta.model;
+    if (meta.prompt) gap.prompt = meta.prompt;
+    if (Number.isFinite(meta.durationSec)) gap.durationSec = meta.durationSec;
+    if (Number.isFinite(meta.costUsd)) gap.costUsd = meta.costUsd;
+    gap.source = meta.source || 'tablet';
+    await saveNow();
+    refreshGapCard(key);
+    return gap.uid;
+  },
 };
 
 boot();
