@@ -14,14 +14,29 @@
 export const STORAGE_KEY = "slidemaker.theme";
 export const DEFAULT_THEME = "phosphor";
 
-/* id -> label. The leading glyph is a cheap inline "swatch". */
+/* id -> label. The leading glyph is a cheap inline "swatch".
+   `group` buckets each skin under an <optgroup> in the switcher:
+   the original six are palette-only "Colour skins"; the six new
+   ones are structurally distinct "Designed skins" (texture,
+   typography, decoration, frame treatment — see css/themes.css). */
+export const GROUPS = {
+  colour:   "— Colour skins —",
+  designed: "— Designed skins —",
+};
+
 export const THEMES = [
-  { id: "phosphor",  label: "◉ Phosphor" },   /* ◉ */
-  { id: "amber",     label: "◉ Amber" },
-  { id: "blueprint", label: "◉ Blueprint" },
-  { id: "paper",     label: "◉ Paper" },
-  { id: "synthwave", label: "◉ Synthwave" },
-  { id: "solarpunk", label: "◉ Solarpunk" },
+  { id: "phosphor",   group: "colour",   label: "◉ Phosphor" },   /* ◉ */
+  { id: "amber",      group: "colour",   label: "◉ Amber" },
+  { id: "blueprint",  group: "colour",   label: "◉ Blueprint" },
+  { id: "paper",      group: "colour",   label: "◉ Paper" },
+  { id: "synthwave",  group: "colour",   label: "◉ Synthwave" },
+  { id: "solarpunk",  group: "colour",   label: "◉ Solarpunk" },
+  { id: "instrument", group: "designed", label: "◈ Instrument" },
+  { id: "dither",     group: "designed", label: "◈ Dither" },
+  { id: "orrery",     group: "designed", label: "◈ Orrery" },
+  { id: "draftsman",  group: "designed", label: "◈ Draftsman" },
+  { id: "brutalist",  group: "designed", label: "◈ Brutalist" },
+  { id: "aperture",   group: "designed", label: "◈ Aperture" },
 ];
 
 const VALID = new Set(THEMES.map((t) => t.id));
@@ -69,11 +84,20 @@ export function initTheme() {
   const select = document.getElementById("themeSelect");
   if (select) {
     if (!select.options.length) {
+      /* build one <optgroup> per bucket, in declaration order */
+      const groups = new Map();
       for (const t of THEMES) {
+        let og = groups.get(t.group);
+        if (!og) {
+          og = document.createElement("optgroup");
+          og.label = GROUPS[t.group] || t.group;
+          groups.set(t.group, og);
+          select.appendChild(og);
+        }
         const opt = document.createElement("option");
         opt.value = t.id;
         opt.textContent = t.label;
-        select.appendChild(opt);
+        og.appendChild(opt);
       }
     }
     select.value = current;

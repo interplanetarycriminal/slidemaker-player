@@ -44,6 +44,15 @@
   --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
+  /* ---------- STRUCTURAL tokens (Designed skins). Safe defaults so the
+     six Colour skins + default phosphor are untouched; the Designed skins
+     override these per-theme and shared rules below consume them. ---------- */
+  --tex-url:       none;          /* body background texture (SVG data-URI/gradients) */
+  --font-display:  var(--mono);   /* heading / logo font treatment                   */
+  --border-weight: 1px;           /* panel/button border thickness                   */
+  --shadow-hard:   none;          /* hard offset (no-blur) drop shadow               */
+  --frame-deco:    none;          /* decorative overlay motif for body::before       */
+
   /* ---------- back-compat aliases (do not reference directly in new code) ---------- */
   --phos:        var(--fg);
   --phos-dim:    var(--fg-dim);

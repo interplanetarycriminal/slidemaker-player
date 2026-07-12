@@ -195,3 +195,361 @@
 :root[data-theme="solarpunk"] textarea {
   font-family: var(--sans);
 }
+
+/* ============================================================
+   DESIGNED SKINS (7-12) - structurally distinct beyond palette.
+   Each defines the full semantic token set + the STRUCTURAL tokens
+   (--tex-url,--font-display,--border-weight,--shadow-hard,--frame-deco)
+   consumed by the layout-SAFE shared rules at the bottom of this
+   file (backgrounds + pointer-events:none pseudo-element overlays
+   only; nothing enters the layout flow). Works in Player, Studio
+   and Director Mode; the original six skins are untouched.
+   ============================================================ */
+
+/* ---------------- 7 - INSTRUMENT (oscilloscope / diagnostic) ---------------- */
+:root[data-theme="instrument"] {
+  --bg:            #17110b;
+  --panel:         #201811;
+  --panel-2:       #120d07;
+  --fg:            #e8d5b0;
+  --fg-dim:        #a8906a;
+  --fg-faint:      #5c4a34;
+  --accent:        #ffb347;
+  --accent-dim:    #b57a2c;
+  --accent-faint:  #4a3418;
+  --accent-2:      #7fd6c0;
+  --err:           #e5674f;
+  --ok:            #8fd694;
+  --accent-rgb:    255 179 71;
+  --accent-2-rgb:  127 214 192;
+  --err-rgb:       229 103 79;
+  --ok-rgb:        143 214 148;
+  --scan-rgb:      255 224 176;
+  --shadow-rgb:    0 0 0;
+  --scan-alpha:    0.35;
+  --glow-alpha:    0.5;
+  --vignette-alpha:0.8;
+  --radius:        2px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='34'%3E%3Cpath%20d='M0%2017%20Q20%202%2040%2017%20T80%2017%20Q100%2030%20120%2017%20T160%2017'%20fill='none'%20stroke='%23ffb347'%20stroke-width='1.4'%20stroke-opacity='0.55'/%3E%3C/svg%3E");
+  --font-display:  var(--mono);
+  --border-weight: 1px;
+  --shadow-hard:   none;
+  --frame-deco:    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='34'%3E%3Cpath%20d='M0%2017%20Q20%202%2040%2017%20T80%2017%20Q100%2030%20120%2017%20T160%2017'%20fill='none'%20stroke='%23ffb347'%20stroke-width='1.4'%20stroke-opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ---------------- 8 - DITHER (1-bit Macintosh / risograph archive) ---------------- */
+:root[data-theme="dither"] {
+  --bg:            #d9e6df;
+  --panel:         #cddcd3;
+  --panel-2:       #c2d3c8;
+  --fg:            #12140f;
+  --fg-dim:        #3a3e34;
+  --fg-faint:      #79806f;
+  --accent:        #12140f;
+  --accent-dim:    #3a3e34;
+  --accent-faint:  #aab0a2;
+  --accent-2:      #12140f;
+  --err:           #8a1c10;
+  --ok:            #1f4a24;
+  --accent-rgb:    18 20 15;
+  --accent-2-rgb:  18 20 15;
+  --err-rgb:       138 28 16;
+  --ok-rgb:        31 74 36;
+  --scan-rgb:      18 20 15;
+  --shadow-rgb:    18 20 15;
+  --scan-alpha:    0;
+  --glow-alpha:    0;
+  --vignette-alpha:0;
+  --radius:        0px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='4'%20height='4'%3E%3Crect%20x='0'%20y='0'%20width='1'%20height='1'%20fill='%2312140f'%20fill-opacity='0.30'/%3E%3Crect%20x='2'%20y='2'%20width='1'%20height='1'%20fill='%2312140f'%20fill-opacity='0.30'/%3E%3C/svg%3E");
+  --font-display:  var(--mono);
+  --border-weight: 2px;
+  --shadow-hard:   2px 2px 0 #12140f;
+  --frame-deco:    none;
+}
+
+/* ---------------- 9 - ORRERY (cosmic / astronomical) ---------------- */
+:root[data-theme="orrery"] {
+  --bg:            #0a0a1a;
+  --panel:         #12122a;
+  --panel-2:       #08081a;
+  --fg:            #e6e6ff;
+  --fg-dim:        #9a9ac8;
+  --fg-faint:      #4a4a70;
+  --accent:        #9b8cff;
+  --accent-dim:    #6a5fb0;
+  --accent-faint:  #2e2a52;
+  --accent-2:      #5fe0e8;
+  --err:           #ff6b8f;
+  --ok:            #7cf0c8;
+  --accent-rgb:    155 140 255;
+  --accent-2-rgb:  95 224 232;
+  --err-rgb:       255 107 143;
+  --ok-rgb:        124 240 200;
+  --scan-rgb:      200 210 255;
+  --shadow-rgb:    2 2 10;
+  --scan-alpha:    0;
+  --glow-alpha:    0.8;
+  --vignette-alpha:0.6;
+  --radius:        10px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='200'%20height='200'%3E%3Ccircle%20cx='20'%20cy='30'%20r='0.9'%20fill='%23ffffff'%20fill-opacity='0.9'/%3E%3Ccircle%20cx='55'%20cy='70'%20r='0.6'%20fill='%23cfe0ff'%20fill-opacity='0.6'/%3E%3Ccircle%20cx='95'%20cy='25'%20r='0.7'%20fill='%23ffffff'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='140'%20cy='60'%20r='0.5'%20fill='%235fe0e8'%20fill-opacity='0.6'/%3E%3Ccircle%20cx='175'%20cy='35'%20r='0.8'%20fill='%23ffffff'%20fill-opacity='0.8'/%3E%3Ccircle%20cx='30'%20cy='120'%20r='0.6'%20fill='%23ffffff'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='80'%20cy='150'%20r='0.9'%20fill='%239b8cff'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='120'%20cy='110'%20r='0.5'%20fill='%23ffffff'%20fill-opacity='0.6'/%3E%3Ccircle%20cx='165'%20cy='145'%20r='0.7'%20fill='%23ffffff'%20fill-opacity='0.7'/%3E%3Ccircle%20cx='45'%20cy='185'%20r='0.6'%20fill='%235fe0e8'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='110'%20cy='175'%20r='0.5'%20fill='%23ffffff'%20fill-opacity='0.5'/%3E%3Ccircle%20cx='190'%20cy='180'%20r='0.8'%20fill='%23ffffff'%20fill-opacity='0.8'/%3E%3C/svg%3E");
+  --font-display:  Georgia, "Times New Roman", "Iowan Old Style", serif;
+  --border-weight: 1px;
+  --shadow-hard:   none;
+  --frame-deco:    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='640'%20height='640'%3E%3Cg%20fill='none'%20stroke-dasharray='2%207'%3E%3Ccircle%20cx='320'%20cy='320'%20r='110'%20stroke='%239b8cff'%20stroke-opacity='0.22'/%3E%3Ccircle%20cx='320'%20cy='320'%20r='185'%20stroke='%235fe0e8'%20stroke-opacity='0.16'/%3E%3Ccircle%20cx='320'%20cy='320'%20r='265'%20stroke='%239b8cff'%20stroke-opacity='0.12'/%3E%3Ccircle%20cx='320'%20cy='320'%20r='4'%20fill='%235fe0e8'%20stroke='none'%20fill-opacity='0.6'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ---------------- 10 - DRAFTSMAN (blueprint schematic w/ real grid) ---------------- */
+:root[data-theme="draftsman"] {
+  --bg:            #0d2438;
+  --panel:         #12314a;
+  --panel-2:       #0a1c2c;
+  --fg:            #cfeaff;
+  --fg-dim:        #7fb4d6;
+  --fg-faint:      #2f5876;
+  --accent:        #8fd6ff;
+  --accent-dim:    #4a90b8;
+  --accent-faint:  #1e4058;
+  --accent-2:      #ffd27f;
+  --err:           #ff9a8f;
+  --ok:            #8fe0b0;
+  --accent-rgb:    143 214 255;
+  --accent-2-rgb:  255 210 127;
+  --err-rgb:       255 154 143;
+  --ok-rgb:        143 224 176;
+  --scan-rgb:      200 230 255;
+  --shadow-rgb:    3 12 22;
+  --scan-alpha:    0;
+  --glow-alpha:    0.4;
+  --vignette-alpha:0.5;
+  --radius:        0px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       none;
+  --font-display:  var(--mono);
+  --border-weight: 1px;
+  --shadow-hard:   none;
+  --frame-deco:    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='34'%20height='34'%3E%3Cg%20stroke='%238fd6ff'%20stroke-opacity='0.55'%20stroke-width='1'%20fill='none'%3E%3Cpath%20d='M17%203V31M3%2017H31'/%3E%3Ccircle%20cx='17'%20cy='17'%20r='7.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ---------------- 11 - BRUTALIST (Swiss / newsprint) ---------------- */
+:root[data-theme="brutalist"] {
+  --bg:            #f2f0e9;
+  --panel:         #e9e7de;
+  --panel-2:       #dedcd2;
+  --fg:            #0a0a0a;
+  --fg-dim:        #333333;
+  --fg-faint:      #777169;
+  --accent:        #0a0a0a;
+  --accent-dim:    #333333;
+  --accent-faint:  #9c968c;
+  --accent-2:      #e2231a;
+  --err:           #e2231a;
+  --ok:            #0a7d3a;
+  --accent-rgb:    10 10 10;
+  --accent-2-rgb:  226 35 26;
+  --err-rgb:       226 35 26;
+  --ok-rgb:        10 125 58;
+  --scan-rgb:      10 10 10;
+  --shadow-rgb:    10 10 10;
+  --scan-alpha:    0;
+  --glow-alpha:    0;
+  --vignette-alpha:0;
+  --radius:        0px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       none;
+  --font-display:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --border-weight: 3px;
+  --shadow-hard:   6px 6px 0 #0a0a0a;
+  --frame-deco:    none;
+}
+
+/* ---------------- 12 - APERTURE (modern startup + pixel halftone) ---------------- */
+:root[data-theme="aperture"] {
+  --bg:            #141019;
+  --panel:         #1e1826;
+  --panel-2:       #120e19;
+  --fg:            #f4ecff;
+  --fg-dim:        #b09ac8;
+  --fg-faint:      #5a4a70;
+  --accent:        #ff3ea5;
+  --accent-dim:    #b02b73;
+  --accent-faint:  #4a1f38;
+  --accent-2:      #5cc8ff;
+  --err:           #ff5f8f;
+  --ok:            #4ade9c;
+  --accent-rgb:    255 62 165;
+  --accent-2-rgb:  92 200 255;
+  --err-rgb:       255 95 143;
+  --ok-rgb:        74 222 156;
+  --scan-rgb:      255 200 235;
+  --shadow-rgb:    8 4 14;
+  --scan-alpha:    0;
+  --glow-alpha:    0.7;
+  --vignette-alpha:0.4;
+  --radius:        14px;
+  --mono: "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --tex-url:       none;
+  --font-display:  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --border-weight: 1px;
+  --shadow-hard:   none;
+  --frame-deco:    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='300'%3E%3Ccircle%20cx='150.0'%20cy='150.0'%20r='0.50'%20fill='%23ff3ea5'%20fill-opacity='0.90'/%3E%3Ccircle%20cx='145.4'%20cy='154.2'%20r='0.54'%20fill='%23ff3ea5'%20fill-opacity='0.89'/%3E%3Ccircle%20cx='150.8'%20cy='141.3'%20r='0.57'%20fill='%23ff3ea5'%20fill-opacity='0.88'/%3E%3Ccircle%20cx='156.5'%20cy='158.5'%20r='0.61'%20fill='%23ff3ea5'%20fill-opacity='0.88'/%3E%3Ccircle%20cx='137.8'%20cy='147.8'%20r='0.65'%20fill='%23ff3ea5'%20fill-opacity='0.87'/%3E%3Ccircle%20cx='161.7'%20cy='142.6'%20r='0.68'%20fill='%23ff3ea5'%20fill-opacity='0.86'/%3E%3Ccircle%20cx='146.1'%20cy='164.7'%20r='0.72'%20fill='%23ff3ea5'%20fill-opacity='0.85'/%3E%3Ccircle%20cx='142.4'%20cy='135.4'%20r='0.76'%20fill='%23ff3ea5'%20fill-opacity='0.84'/%3E%3Ccircle%20cx='166.5'%20cy='156.0'%20r='0.79'%20fill='%23ff3ea5'%20fill-opacity='0.83'/%3E%3Ccircle%20cx='132.8'%20cy='157.1'%20r='0.83'%20fill='%23ff3ea5'%20fill-opacity='0.82'/%3E%3Ccircle%20cx='158.3'%20cy='132.2'%20r='0.87'%20fill='%23ff3ea5'%20fill-opacity='0.82'/%3E%3Ccircle%20cx='156.2'%20cy='169.6'%20r='0.90'%20fill='%23ff3ea5'%20fill-opacity='0.81'/%3E%3Ccircle%20cx='131.4'%20cy='139.2'%20r='0.94'%20fill='%23ff3ea5'%20fill-opacity='0.80'/%3E%3Ccircle%20cx='171.8'%20cy='145.2'%20r='0.98'%20fill='%23ff3ea5'%20fill-opacity='0.79'/%3E%3Ccircle%20cx='136.7'%20cy='169.0'%20r='1.01'%20fill='%23ff3ea5'%20fill-opacity='0.78'/%3E%3Ccircle%20cx='146.9'%20cy='126.2'%20r='1.05'%20fill='%23ff3ea5'%20fill-opacity='0.78'/%3E%3Ccircle%20cx='169.0'%20cy='166.0'%20r='1.09'%20fill='%23ff3ea5'%20fill-opacity='0.77'/%3E%3Ccircle%20cx='124.5'%20cy='151.1'%20r='1.12'%20fill='%23ff3ea5'%20fill-opacity='0.76'/%3E%3Ccircle%20cx='168.6'%20cy='131.4'%20r='1.16'%20fill='%23ff3ea5'%20fill-opacity='0.75'/%3E%3Ccircle%20cx='148.8'%20cy='177.0'%20r='1.20'%20fill='%23ff3ea5'%20fill-opacity='0.74'/%3E%3Ccircle%20cx='132.2'%20cy='128.7'%20r='1.23'%20fill='%23ff3ea5'%20fill-opacity='0.73'/%3E%3Ccircle%20cx='178.2'%20cy='153.8'%20r='1.27'%20fill='%23ff3ea5'%20fill-opacity='0.73'/%3E%3Ccircle%20cx='126.1'%20cy='166.6'%20r='1.31'%20fill='%23ff3ea5'%20fill-opacity='0.72'/%3E%3Ccircle%20cx='156.5'%20cy='121.0'%20r='1.34'%20fill='%23ff3ea5'%20fill-opacity='0.71'/%3E%3Ccircle%20cx='165.1'%20cy='176.4'%20r='1.38'%20fill='%23ff3ea5'%20fill-opacity='0.70'/%3E%3Ccircle%20cx='120.5'%20cy='140.6'%20r='1.42'%20fill='%23ff3ea5'%20fill-opacity='0.69'/%3E%3Ccircle%20cx='178.7'%20cy='136.7'%20r='1.45'%20fill='%23ff3ea5'%20fill-opacity='0.68'/%3E%3Ccircle%20cx='137.6'%20cy='179.7'%20r='1.49'%20fill='%23ff3ea5'%20fill-opacity='0.68'/%3E%3Ccircle%20cx='138.9'%20cy='119.1'%20r='1.53'%20fill='%23ff3ea5'%20fill-opacity='0.67'/%3E%3Ccircle%20cx='179.6'%20cy='165.5'%20r='1.56'%20fill='%23ff3ea5'%20fill-opacity='0.66'/%3E%3Ccircle%20cx='117.2'%20cy='158.7'%20r='1.60'%20fill='%23ff3ea5'%20fill-opacity='0.65'/%3E%3Ccircle%20cx='168.7'%20cy='121.0'%20r='1.64'%20fill='%23ff3ea5'%20fill-opacity='0.64'/%3E%3Ccircle%20cx='155.9'%20cy='184.6'%20r='1.67'%20fill='%23ff3ea5'%20fill-opacity='0.63'/%3E%3Ccircle%20cx='121.8'%20cy='128.2'%20r='1.71'%20fill='%23ff3ea5'%20fill-opacity='0.63'/%3E%3Ccircle%20cx='186.0'%20cy='147.0'%20r='1.75'%20fill='%23ff3ea5'%20fill-opacity='0.62'/%3E%3Ccircle%20cx='125.1'%20cy='176.9'%20r='1.78'%20fill='%23ff3ea5'%20fill-opacity='0.61'/%3E%3Ccircle%20cx='150.2'%20cy='112.8'%20r='1.82'%20fill='%23ff3ea5'%20fill-opacity='0.60'/%3E%3Ccircle%20cx='175.3'%20cy='177.9'%20r='1.86'%20fill='%23ff3ea5'%20fill-opacity='0.59'/%3E%3Ccircle%20cx='111.9'%20cy='146.5'%20r='1.89'%20fill='%23ff3ea5'%20fill-opacity='0.58'/%3E%3Ccircle%20cx='180.8'%20cy='126.6'%20r='1.93'%20fill='%23ff3ea5'%20fill-opacity='0.57'/%3E%3Ccircle%20cx='143.0'%20cy='188.6'%20r='1.97'%20fill='%23ff3ea5'%20fill-opacity='0.57'/%3E%3Ccircle%20cx='128.9'%20cy='116.4'%20r='2.00'%20fill='%23ff3ea5'%20fill-opacity='0.56'/%3E%3Ccircle%20cx='188.8'%20cy='160.6'%20r='2.04'%20fill='%23ff3ea5'%20fill-opacity='0.55'/%3E%3Ccircle%20cx='113.8'%20cy='168.6'%20r='2.08'%20fill='%23ff3ea5'%20fill-opacity='0.54'/%3E%3Ccircle%20cx='164.3'%20cy='111.4'%20r='2.11'%20fill='%23ff3ea5'%20fill-opacity='0.53'/%3E%3Ccircle%20cx='165.7'%20cy='188.5'%20r='2.15'%20fill='%23ff3ea5'%20fill-opacity='0.53'/%3E%3Ccircle%20cx='112.0'%20cy='132.0'%20r='2.19'%20fill='%23ff3ea5'%20fill-opacity='0.52'/%3E%3Ccircle%20cx='190.6'%20cy='137.5'%20r='2.22'%20fill='%23ff3ea5'%20fill-opacity='0.51'/%3E%3Ccircle%20cx='128.3'%20cy='187.1'%20r='2.26'%20fill='%23ff3ea5'%20fill-opacity='0.50'/%3E%3Ccircle%20cx='140.9'%20cy='107.6'%20r='2.30'%20fill='%23ff3ea5'%20fill-opacity='0.49'/%3E%3Ccircle%20cx='185.7'%20cy='175.4'%20r='2.33'%20fill='%23ff3ea5'%20fill-opacity='0.48'/%3E%3Ccircle%20cx='106.1'%20cy='155.5'%20r='2.37'%20fill='%23ff3ea5'%20fill-opacity='0.48'/%3E%3Ccircle%20cx='179.0'%20cy='116.0'%20r='2.41'%20fill='%23ff3ea5'%20fill-opacity='0.47'/%3E%3Ccircle%20cx='151.6'%20cy='195.1'%20r='2.44'%20fill='%23ff3ea5'%20fill-opacity='0.46'/%3E%3Ccircle%20cx='118.0'%20cy='117.5'%20r='2.48'%20fill='%23ff3ea5'%20fill-opacity='0.45'/%3E%3Ccircle%20cx='195.9'%20cy='152.3'%20r='2.52'%20fill='%23ff3ea5'%20fill-opacity='0.44'/%3E%3Ccircle%20cx='114.2'%20cy='179.6'%20r='2.55'%20fill='%23ff3ea5'%20fill-opacity='0.43'/%3E%3Ccircle%20cx='156.5'%20cy='103.6'%20r='2.59'%20fill='%23ff3ea5'%20fill-opacity='0.43'/%3E%3Ccircle%20cx='176.8'%20cy='188.9'%20r='2.63'%20fill='%23ff3ea5'%20fill-opacity='0.42'/%3E%3Ccircle%20cx='103.6'%20cy='139.3'%20r='2.66'%20fill='%23ff3ea5'%20fill-opacity='0.41'/%3E%3Ccircle%20cx='191.8'%20cy='126.3'%20r='2.70'%20fill='%23ff3ea5'%20fill-opacity='0.40'/%3E%3Ccircle%20cx='135.1'%20cy='196.1'%20r='2.74'%20fill='%23ff3ea5'%20fill-opacity='0.39'/%3E%3Ccircle%20cx='129.7'%20cy='105.6'%20r='2.77'%20fill='%23ff3ea5'%20fill-opacity='0.38'/%3E%3Ccircle%20cx='195.3'%20cy='169.2'%20r='2.81'%20fill='%23ff3ea5'%20fill-opacity='0.38'/%3E%3Ccircle%20cx='103.2'%20cy='166.6'%20r='2.85'%20fill='%23ff3ea5'%20fill-opacity='0.37'/%3E%3Ccircle%20cx='173.5'%20cy='105.9'%20r='2.88'%20fill='%23ff3ea5'%20fill-opacity='0.36'/%3E%3Ccircle%20cx='162.6'%20cy='198.8'%20r='2.92'%20fill='%23ff3ea5'%20fill-opacity='0.35'/%3E%3Ccircle%20cx='107.4'%20cy='122.3'%20r='2.96'%20fill='%23ff3ea5'%20fill-opacity='0.34'/%3E%3Ccircle%20cx='200.4'%20cy='141.6'%20r='2.99'%20fill='%23ff3ea5'%20fill-opacity='0.33'/%3E%3Ccircle%20cx='118.3'%20cy='190.6'%20r='3.03'%20fill='%23ff3ea5'%20fill-opacity='0.32'/%3E%3Ccircle%20cx='146.0'%20cy='98.3'%20r='3.07'%20fill='%23ff3ea5'%20fill-opacity='0.32'/%3E%3Ccircle%20cx='188.2'%20cy='185.7'%20r='3.10'%20fill='%23ff3ea5'%20fill-opacity='0.31'/%3E%3Ccircle%20cx='97.4'%20cy='149.5'%20r='3.14'%20fill='%23ff3ea5'%20fill-opacity='0.30'/%3E%3Ccircle%20cx='189.4'%20cy='114.6'%20r='3.18'%20fill='%23ff3ea5'%20fill-opacity='0.29'/%3E%3Ccircle%20cx='144.8'%20cy='203.1'%20r='3.21'%20fill='%23ff3ea5'%20fill-opacity='0.28'/%3E%3Ccircle%20cx='117.7'%20cy='107.1'%20r='3.25'%20fill='%23ff3ea5'%20fill-opacity='0.28'/%3E%3Ccircle%20cx='203.1'%20cy='159.9'%20r='3.29'%20fill='%23ff3ea5'%20fill-opacity='0.27'/%3E%3Ccircle%20cx='103.8'%20cy='178.8'%20r='3.32'%20fill='%23ff3ea5'%20fill-opacity='0.26'/%3E%3Ccircle%20cx='164.7'%20cy='97.3'%20r='3.36'%20fill='%23ff3ea5'%20fill-opacity='0.25'/%3E%3Ccircle%20cx='174.9'%20cy='199.1'%20r='3.40'%20fill='%23ff3ea5'%20fill-opacity='0.24'/%3E%3Ccircle%20cx='98.1'%20cy='130.5'%20r='3.43'%20fill='%23ff3ea5'%20fill-opacity='0.23'/%3E%3Ccircle%20cx='201.8'%20cy='129.2'%20r='3.47'%20fill='%23ff3ea5'%20fill-opacity='0.22'/%3E%3Ccircle%20cx='125.7'%20cy='200.6'%20r='3.51'%20fill='%23ff3ea5'%20fill-opacity='0.22'/%3E%3Ccircle%20cx='133.6'%20cy='95.9'%20r='3.54'%20fill='%23ff3ea5'%20fill-opacity='0.21'/%3E%3Ccircle%20cx='198.9'%20cy='179.0'%20r='3.58'%20fill='%23ff3ea5'%20fill-opacity='0.20'/%3E%3Ccircle%20cx='94.1'%20cy='161.7'%20r='3.62'%20fill='%23ff3ea5'%20fill-opacity='0.19'/%3E%3Ccircle%20cx='183.5'%20cy='103.3'%20r='3.65'%20fill='%23ff3ea5'%20fill-opacity='0.18'/%3E%3Ccircle%20cx='156.9'%20cy='207.4'%20r='3.69'%20fill='%23ff3ea5'%20fill-opacity='0.18'/%3E%3Ccircle%20cx='105.9'%20cy='112.1'%20r='3.73'%20fill='%23ff3ea5'%20fill-opacity='0.17'/%3E%3Ccircle%20cx='208.5'%20cy='148.2'%20r='3.76'%20fill='%23ff3ea5'%20fill-opacity='0.16'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   SHARED, LAYOUT-SAFE consumption of the Designed-skin tokens.
+   Only backgrounds, fonts and pointer-events:none overlays.
+   body::before is unused by player.css/studio.css, so it is a
+   free full-viewport decorative layer on BOTH pages + Director.
+   ============================================================ */
+
+/* --- font treatments (body + form controls) --- */
+:root[data-theme="orrery"]    body,
+:root[data-theme="brutalist"] body,
+:root[data-theme="aperture"]  body,
+:root[data-theme="orrery"]    button, :root[data-theme="orrery"]    input, :root[data-theme="orrery"]    select, :root[data-theme="orrery"]    textarea,
+:root[data-theme="brutalist"] button, :root[data-theme="brutalist"] input, :root[data-theme="brutalist"] select, :root[data-theme="brutalist"] textarea,
+:root[data-theme="aperture"]  button, :root[data-theme="aperture"]  input, :root[data-theme="aperture"]  select, :root[data-theme="aperture"]  textarea {
+  font-family: var(--sans);
+}
+
+/* display font for logos / section headings (visual only, no reflow risk) */
+:root[data-theme="orrery"]    .logo,
+:root[data-theme="brutalist"] .logo,
+:root[data-theme="aperture"]  .logo,
+:root[data-theme="orrery"]    #composerHead h2, :root[data-theme="orrery"]    #keyDrawer h2,
+:root[data-theme="brutalist"] #composerHead h2, :root[data-theme="brutalist"] #keyDrawer h2,
+:root[data-theme="aperture"]  #composerHead h2, :root[data-theme="aperture"]  #keyDrawer h2 {
+  font-family: var(--font-display);
+}
+:root[data-theme="orrery"] .logo {
+  letter-spacing: 0.26em; text-transform: uppercase; font-weight: 400;
+}
+:root[data-theme="brutalist"] .logo {
+  letter-spacing: -0.02em; font-weight: 900; -webkit-text-stroke: 0.4px #0a0a0a;
+}
+:root[data-theme="aperture"] .logo { letter-spacing: -0.01em; font-weight: 700; }
+:root[data-theme="instrument"] .logo,
+:root[data-theme="draftsman"]  .logo { letter-spacing: 0.24em; }
+:root[data-theme="dither"] .logo { letter-spacing: 0.04em; font-weight: 700; }
+
+/* --- base body texture (behind content; #stageView/#000 covers it in play) --- */
+:root[data-theme="instrument"] body {
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(var(--accent-rgb)/0.05) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgb(var(--accent-rgb)/0.05) 0 1px, transparent 1px 26px);
+}
+:root[data-theme="dither"] body {
+  background-color: var(--bg);
+  background-image: var(--tex-url);
+  image-rendering: pixelated;
+}
+:root[data-theme="orrery"] body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% 18%, #16163a 0%, #0a0a1a 45%, #05050d 100%),
+    var(--tex-url);
+  background-repeat: no-repeat, repeat;
+}
+:root[data-theme="draftsman"] body {
+  background-color: var(--bg);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(var(--accent-rgb)/0.10) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(90deg, rgb(var(--accent-rgb)/0.10) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(0deg, rgb(var(--accent-rgb)/0.05) 0 1px, transparent 1px 16px),
+    repeating-linear-gradient(90deg, rgb(var(--accent-rgb)/0.05) 0 1px, transparent 1px 16px);
+}
+:root[data-theme="brutalist"] body {
+  background-color: var(--bg);
+  background-image: radial-gradient(rgb(10 10 10/0.05) 1px, transparent 1.4px);
+  background-size: 6px 6px;
+}
+:root[data-theme="aperture"] body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(120% 80% at 12% -10%, rgb(var(--accent-rgb)/0.16) 0%, transparent 42%),
+    radial-gradient(120% 80% at 100% 110%, rgb(var(--accent-2-rgb)/0.12) 0%, transparent 45%);
+  background-repeat: no-repeat;
+}
+
+/* --- decorative body::before overlay (fixed, pointer-events:none, NEVER in flow) --- */
+:root[data-theme="instrument"] body::before,
+:root[data-theme="orrery"]     body::before,
+:root[data-theme="draftsman"]  body::before,
+:root[data-theme="aperture"]   body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background-repeat: no-repeat;
+}
+/* instrument: oscilloscope traces along the top & bottom edges */
+:root[data-theme="instrument"] body::before {
+  background-image: var(--frame-deco), var(--frame-deco);
+  background-repeat: repeat-x, repeat-x;
+  background-position: left 6px, left calc(100% - 6px);
+  opacity: 0.5;
+}
+/* orrery: concentric dashed orbital rings floating off to the side */
+:root[data-theme="orrery"] body::before {
+  background-image: var(--frame-deco);
+  background-position: 118% 26%;
+  background-size: 680px 680px;
+  opacity: 0.9;
+}
+/* draftsman: registration crosshairs pinned to the four corners */
+:root[data-theme="draftsman"] body::before {
+  background-image: var(--frame-deco), var(--frame-deco), var(--frame-deco), var(--frame-deco);
+  background-position: 14px 14px, calc(100% - 14px) 14px, 14px calc(100% - 14px), calc(100% - 14px) calc(100% - 14px);
+}
+/* aperture: pixel-halftone swirl blooming from the top-right hero corner */
+:root[data-theme="aperture"] body::before {
+  background-image: var(--frame-deco);
+  background-position: right -60px top -60px;
+  background-size: 420px 420px;
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* overlays are already static; kept explicit for intent */
+  :root[data-theme="instrument"] body::before,
+  :root[data-theme="orrery"] body::before,
+  :root[data-theme="draftsman"] body::before,
+  :root[data-theme="aperture"] body::before { animation: none; }
+}
+
+/* --- border / shadow / radius treatments (visual only; global box-sizing:
+       border-box means thicker borders never change element footprints) --- */
+:root[data-theme="dither"] .tbtn,
+:root[data-theme="dither"] .sbtn,
+:root[data-theme="dither"] .cbtn,
+:root[data-theme="dither"] #jsonInput,
+:root[data-theme="dither"] #settingsBar,
+:root[data-theme="dither"] .slideCard,
+:root[data-theme="dither"] #composer,
+:root[data-theme="dither"] .grid-cell,
+:root[data-theme="brutalist"] .tbtn,
+:root[data-theme="brutalist"] .sbtn,
+:root[data-theme="brutalist"] #jsonInput,
+:root[data-theme="brutalist"] #settingsBar,
+:root[data-theme="brutalist"] .slideCard,
+:root[data-theme="brutalist"] #composer,
+:root[data-theme="brutalist"] .grid-cell {
+  border-width: var(--border-weight);
+  box-shadow: var(--shadow-hard);
+}
+/* pixelated slide thumbnails in the bitmap skins (tasteful, images only) */
+:root[data-theme="dither"] .grid-cell img,
+:root[data-theme="dither"] .slideCard .thumbBtn img,
+:root[data-theme="dither"] .reelThumb img {
+  image-rendering: pixelated;
+}

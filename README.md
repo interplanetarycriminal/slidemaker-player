@@ -189,7 +189,9 @@ panels and accent glow; light skins (`paper`, `solarpunk`) render flat.
 
 Both the player and Studio share a **skin system** (zero-dependency, offline).
 Pick a skin from the `SKIN` dropdown — top-right on the player landing, on the
-Studio settings bar. Six skins ship:
+Studio settings bar. **Twelve skins** ship, grouped into two `<optgroup>`s.
+
+**— Colour skins —** (palette-only variations on the CRT shell):
 
 | id          | look                                             |
 | ----------- | ------------------------------------------------ |
@@ -199,6 +201,24 @@ Studio settings bar. Six skins ship:
 | `paper`     | light editorial — ink on off-white, oxblood, flat |
 | `synthwave` | indigo + magenta/cyan, heavy glow                |
 | `solarpunk` | light-ish cream + forest green + gold, soft/flat |
+
+**— Designed skins —** (structurally distinct: texture, typography, decoration
+and frame treatment, not just colour):
+
+| id           | look                                                                 |
+| ------------ | -------------------------------------------------------------------- |
+| `instrument` | warm-brown oscilloscope readout; mono; graticule grid + waveform edges, faint scanlines |
+| `dither`     | 1-bit Macintosh archive; pale mint; ordered-dither texture, hard 2px borders, pixelated thumbs, flat |
+| `orrery`     | cosmic radial-space bg + starfield; serif small-caps headings; dashed orbital rings, soft glow |
+| `draftsman`  | blueprint schematic; real fine+major CSS grid; corner registration crosshairs; mono, flat cyan |
+| `brutalist`  | Swiss newsprint on paper; heavy 900 display headings; 3px rules + 6px hard offset shadows, zero radius |
+| `aperture`   | modern startup dark; magenta accent; pixel-halftone swirl corner motif; rounded sans, soft gradient |
+
+Each Designed skin adds structural tokens — `--tex-url`, `--font-display`,
+`--border-weight`, `--shadow-hard`, `--frame-deco` — with safe defaults in
+`css/player.css`. All decoration is **layout-safe**: backgrounds and
+`pointer-events:none` `body::before` overlays only (never flow elements), so it
+works identically in Player, Studio and Director Mode and cannot shift the UI.
 
 The choice is saved in `localStorage` under `slidemaker.theme` and applied via
 `<html data-theme="…">`. A tiny inline snippet in each page `<head>` reads the
@@ -211,7 +231,7 @@ tokens in [`css/themes.css`](css/themes.css). Light skins set `--scan-alpha` and
 `--glow-alpha` to `0`, disabling scanlines and glow. Legacy var names
 (`--phos`, `--acc`, …) are kept as aliases, so no other code had to change. To
 add a skin: append a `:root[data-theme="myskin"] { … }` block in `themes.css`
-and an entry to `THEMES` in [`js/theme.js`](js/theme.js).
+and an entry to `THEMES` (with its `group`) in [`js/theme.js`](js/theme.js).
 
 ## Deploy to GitHub Pages
 
